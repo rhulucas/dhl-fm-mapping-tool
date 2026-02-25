@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WH-001",
+        "name": "Westerville Main Center",
+        "manager": "Alex Chen",
+        "contact": "alex.chen@dhl.com",
+        "issue_guide": "For HVAC issues, contact vendor A. For IT, reboot router."
+      },
+      "geometry": { "type": "Point", "coordinates": [-82.9988, 40.1273] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WH-002",
+        "name": "Columbus North Hub",
+        "manager": "Sarah Miller",
+        "contact": "s.miller@dhl.com",
+        "issue_guide": "Fire safety inspection due monthly. Contact Security for gate access."
+      },
+      "geometry": { "type": "Point", "coordinates": [-83.0000, 39.9612] }
+    }
+  ]
+}

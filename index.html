@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHL Facility Management Tool</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="sidebar">
+        <div class="header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/DHL_Express_logo.svg" alt="DHL Logo" width="100">
+            <h3>FM Responsibilities</h3>
+        </div>
+        <div id="info-content">
+            <p>Select a facility on the map to see details.</p>
+        </div>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        // 配置你的 Mapbox Token
+        mapboxgl.accessToken = 'pk.eyJ1Ijoia2VsbHktMjM0IiwiYSI6ImNtbTJtMzMwZDA4cWUycW44dGJxeXN3bWcifQ.gm3xcvjUAp1lKIONNxbRpw';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-82.9988, 40.0], 
+            zoom: 9
+        });
+
+        map.on('load', () => {
+            // 加载刚才创建的 json 数据
+            map.addSource('facilities', {
+                type: 'geojson',
+                data: './data.json'
+            });
+
+            // 添加圆点图层
+            map.addLayer({
+                id: 'points',
+                type: 'circle',
+                source: 'facilities',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#d40511',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // 点击交互
+            map.on('click', 'points', (e) => {
+                const props = e.features[0].properties;
+                document.getElementById('info-content').innerHTML = `
+                    <h2>${props.name}</h2>
+                    <p><strong>ID:</strong> ${props.id}</p>
+                    <p><strong>Manager:</strong> ${props.manager}</p>
+                    <p><strong>Contact:</strong> <a href="mailto:${props.contact}">${props.contact}</a></p>
+                    <div class="guide-box">
+                        <strong>Troubleshooting:</strong><br>
+                        ${props.issue_guide}
+                    </div>
+                `;
+            });
+
+            // 鼠标手势
+            map.on('mouseenter', 'points', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'points', () => map.getCanvas().style.cursor = '');
+        });
+    </script>
+</body>
+</html>
