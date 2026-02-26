@@ -502,34 +502,49 @@
                     </div>
                 </div>
 
-                <div class="detail-section">
-                    <h3>👥 Key Contacts</h3>
-                    <div class="contacts-grid">
-                        ${renderContact('Facility Manager', contacts.facility_manager, '🏢')}
-                        ${renderContact('IT Support', contacts.it_support, '💻')}
-                        ${renderContact('Maintenance', contacts.maintenance, '🔧')}
-                        ${renderContact('Security', contacts.security, '🔒')}
+                <div class="detail-section collapsible">
+                    <h3 class="section-toggle" onclick="toggleSection(this)">
+                        <span>👥 Key Contacts</span>
+                        <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="section-content collapsed">
+                        <div class="contacts-grid">
+                            ${renderContact('Facility Manager', contacts.facility_manager, '🏢')}
+                            ${renderContact('IT Support', contacts.it_support, '💻')}
+                            ${renderContact('Maintenance', contacts.maintenance, '🔧')}
+                            ${renderContact('Security', contacts.security, '🔒')}
+                        </div>
                     </div>
                 </div>
 
-                <div class="detail-section">
-                    <h3>⚙️ Equipment</h3>
-                    <ul class="equipment-list">
-                        ${equipment.map(e => `<li>${e}</li>`).join('')}
-                    </ul>
+                <div class="detail-section collapsible">
+                    <h3 class="section-toggle" onclick="toggleSection(this)">
+                        <span>⚙️ Equipment</span>
+                        <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="section-content collapsed">
+                        <ul class="equipment-list">
+                            ${equipment.map(e => `<li>${e}</li>`).join('')}
+                        </ul>
+                    </div>
                 </div>
 
-                <div class="detail-section">
-                    <h3>🚨 Emergency Procedures</h3>
-                    <p class="section-hint">Select an issue type to see troubleshooting steps:</p>
-                    <div class="emergency-buttons">
-                        ${Object.keys(procedures).map(key => `
-                            <button class="emergency-btn" onclick="showProcedure('${key}', this)">
-                                ${getEmergencyIcon(key)} ${formatProcedureName(key)}
-                            </button>
-                        `).join('')}
+                <div class="detail-section collapsible">
+                    <h3 class="section-toggle" onclick="toggleSection(this)">
+                        <span>🚨 Emergency Procedures</span>
+                        <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="section-content collapsed">
+                        <p class="section-hint">Select an issue type to see troubleshooting steps:</p>
+                        <div class="emergency-buttons">
+                            ${Object.keys(procedures).map(key => `
+                                <button class="emergency-btn" onclick="showProcedure('${key}', this)">
+                                    ${getEmergencyIcon(key)} ${formatProcedureName(key)}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div id="procedure-steps" class="procedure-steps hidden"></div>
                     </div>
-                    <div id="procedure-steps" class="procedure-steps hidden"></div>
                 </div>
 
                 <div class="detail-section">
@@ -585,6 +600,21 @@
 
         function formatProcedureName(key) {
             return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                icon.textContent = '▲';
+                header.classList.add('expanded');
+            } else {
+                content.classList.add('collapsed');
+                icon.textContent = '▼';
+                header.classList.remove('expanded');
+            }
         }
 
         function showProcedure(key, btn) {
