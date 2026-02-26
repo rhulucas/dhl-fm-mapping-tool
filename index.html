@@ -3,72 +3,679 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DHL Facility Management Tool</title>
+    <title>Faster 99 - Facility Management Tool</title>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="sidebar">
+        <!-- Header -->
         <div class="header">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/DHL_Express_logo.svg" alt="DHL Logo" width="100">
-            <h3>FM Responsibilities</h3>
+            <h1 class="logo">⚡ Faster <span>99</span></h1>
+            <p class="tagline">Facility Management Hub</p>
         </div>
-        <div id="info-content">
-            <p>Select a facility on the map to see details.</p>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="facilities">📍 Facilities</button>
+            <button class="nav-tab" data-tab="resources">📚 Resources</button>
+            <button class="nav-tab" data-tab="dashboard">📊 Dashboard</button>
+        </div>
+
+        <!-- Tab: Facilities -->
+        <div id="tab-facilities" class="tab-content active">
+            <!-- Search & Filter -->
+            <div class="search-section">
+                <input type="text" id="search-input" placeholder="🔍 Search facilities...">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-type="all">All</button>
+                    <button class="filter-btn" data-type="distribution">Distribution</button>
+                    <button class="filter-btn" data-type="hub">Hub</button>
+                    <button class="filter-btn" data-type="warehouse">Warehouse</button>
+                    <button class="filter-btn" data-type="fulfillment">Fulfillment</button>
+                    <button class="filter-btn" data-type="sorting">Sorting</button>
+                    <button class="filter-btn" data-type="crossdock">Cross-Dock</button>
+                    <button class="filter-btn" data-type="cold_storage">Cold Storage</button>
+                    <button class="filter-btn" data-type="returns">Returns</button>
+                </div>
+            </div>
+
+            <!-- Facility List -->
+            <div id="facility-list">
+                <p class="loading">Loading facilities...</p>
+            </div>
+
+            <!-- Facility Details Panel (hidden by default) -->
+            <div id="facility-details" class="hidden">
+                <button class="back-btn" onclick="showFacilityList()">← Back to List</button>
+                <div id="details-content"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Resources (REM, IT, Security, Risk) -->
+        <div id="tab-resources" class="tab-content">
+            <h2 class="tab-title">📚 Resource Center</h2>
+            <p class="tab-description">Quick access to key department resources and support channels.</p>
+            
+            <div class="resource-card rem">
+                <div class="resource-icon">🏢</div>
+                <div class="resource-content">
+                    <h3>REM - Real Estate Management</h3>
+                    <p>Property leasing, space planning, and facility expansion requests.</p>
+                    <ul class="resource-links">
+                        <li><a href="#">📋 Space Request Form</a></li>
+                        <li><a href="#">📊 Lease Management Portal</a></li>
+                        <li><a href="#">📞 Contact: rem@faster99.com</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="resource-card it">
+                <div class="resource-icon">💻</div>
+                <div class="resource-content">
+                    <h3>IT Support</h3>
+                    <p>Technical support, network issues, and system access requests.</p>
+                    <ul class="resource-links">
+                        <li><a href="#">🎫 Submit IT Ticket</a></li>
+                        <li><a href="#">📖 Knowledge Base</a></li>
+                        <li><a href="#">📞 Help Desk: 1-800-555-TECH</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="resource-card security">
+                <div class="resource-icon">🔒</div>
+                <div class="resource-content">
+                    <h3>Security</h3>
+                    <p>Access control, surveillance, and emergency response coordination.</p>
+                    <ul class="resource-links">
+                        <li><a href="#">🔑 Access Request Form</a></li>
+                        <li><a href="#">📹 Surveillance Request</a></li>
+                        <li><a href="#">🚨 Emergency: 1-800-555-SAFE</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="resource-card risk">
+                <div class="resource-icon">⚠️</div>
+                <div class="resource-content">
+                    <h3>Risk Management</h3>
+                    <p>Insurance claims, compliance, and incident reporting.</p>
+                    <ul class="resource-links">
+                        <li><a href="#">📝 Incident Report Form</a></li>
+                        <li><a href="#">📋 Insurance Claims Portal</a></li>
+                        <li><a href="#">📞 Contact: risk@faster99.com</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Dashboard -->
+        <div id="tab-dashboard" class="tab-content">
+            <h2 class="tab-title">📊 Facilities Dashboard</h2>
+            <p class="tab-description">Overview of all facility metrics and statistics.</p>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-total">-</span>
+                    <span class="stat-label">Total Facilities</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-sqft">-</span>
+                    <span class="stat-label">Total Sq. Ft.</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-employees">-</span>
+                    <span class="stat-label">Total Employees</span>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3>📈 Facilities by Type</h3>
+                <div id="type-chart" class="type-chart"></div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3>🏆 Largest Facilities</h3>
+                <div id="top-facilities" class="top-facilities"></div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3>📍 Geographic Coverage</h3>
+                <div class="coverage-info" id="coverage-info">
+                    <p>Loading coverage data...</p>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3>🗺️ Facilities by State</h3>
+                <div id="state-chart" class="type-chart"></div>
+            </div>
         </div>
     </div>
+
     <div id="map"></div>
 
+    <!-- Address Search Control on Map -->
+    <div id="geocoder-container" class="geocoder-container"></div>
+
     <script>
-        // 配置你的 Mapbox Token
-        mapboxgl.accessToken = 'pk.eyJ1Ijoia2VsbHktMjM0IiwiYSI6ImNtbTJtMzMwZDA4cWUycW44dGJxeXN3bWcifQ.gm3xcvjUAp1lKIONNxbRpw';
+        // Configure Mapbox Token
+        mapboxgl.accessToken = 'pk.eyJ1Ijoia2VsbHktMjM0IiwiYSI6ImNtbTJreTM2cTA4ZHUycXBydTRqaWp0eTkifQ.SVpQqcW7lvEdQ1zCXI-rvw';
+
+        let facilitiesData = null;
+        let currentFilter = 'all';
+        let searchMarker = null;
 
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
-            center: [-82.9988, 40.0], 
-            zoom: 9
+            center: [-95.7, 37.0], // Center of US
+            zoom: 4
         });
 
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+        // Add Geocoder (Address Search) control
+        const geocoder = new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            mapboxgl: mapboxgl,
+            placeholder: '🔍 Search any address in the US...',
+            countries: 'us',
+            marker: false
+        });
+
+        document.getElementById('geocoder-container').appendChild(geocoder.onAdd(map));
+
+        // Handle geocoder result
+        geocoder.on('result', (e) => {
+            // Remove existing search marker
+            if (searchMarker) {
+                searchMarker.remove();
+            }
+            
+            // Add new marker
+            searchMarker = new mapboxgl.Marker({ color: '#ff0000' })
+                .setLngLat(e.result.center)
+                .setPopup(new mapboxgl.Popup().setHTML(`
+                    <strong>📍 Search Result</strong><br>
+                    ${e.result.place_name}
+                `))
+                .addTo(map);
+            
+            searchMarker.togglePopup();
+        });
+
+        // Facility type colors
+        const typeColors = {
+            'distribution': '#e74c3c',
+            'hub': '#3498db',
+            'fulfillment': '#9b59b6',
+            'sorting': '#e67e22',
+            'warehouse': '#2ecc71',
+            'crossdock': '#1abc9c',
+            'service': '#f39c12',
+            'returns': '#95a5a6',
+            'cold_storage': '#00bcd4'
+        };
+
+        // Facility type labels
+        const typeLabels = {
+            'distribution': 'Distribution Center',
+            'hub': 'Hub',
+            'fulfillment': 'Fulfillment Center',
+            'sorting': 'Sorting Facility',
+            'warehouse': 'Warehouse',
+            'crossdock': 'Cross-Dock',
+            'service': 'Service Center',
+            'returns': 'Returns Center',
+            'cold_storage': 'Cold Storage'
+        };
+
         map.on('load', () => {
-            // 加载刚才创建的 json 数据
-            map.addSource('facilities', {
-                type: 'geojson',
-                data: './data.json'
+            // Load GeoJSON data
+            fetch('./data.json?v=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    facilitiesData = data;
+                    
+                    map.addSource('facilities', {
+                        type: 'geojson',
+                        data: data
+                    });
+
+                    // Add circle layer for facility points
+                    map.addLayer({
+                        id: 'points',
+                        type: 'circle',
+                        source: 'facilities',
+                        paint: {
+                            'circle-radius': 10,
+                            'circle-color': [
+                                'match',
+                                ['get', 'type'],
+                                'distribution', typeColors.distribution,
+                                'hub', typeColors.hub,
+                                'fulfillment', typeColors.fulfillment,
+                                'sorting', typeColors.sorting,
+                                'warehouse', typeColors.warehouse,
+                                'crossdock', typeColors.crossdock,
+                                'service', typeColors.service,
+                                'returns', typeColors.returns,
+                                'cold_storage', typeColors.cold_storage,
+                                '#999999'
+                            ],
+                            'circle-stroke-width': 3,
+                            'circle-stroke-color': '#ffffff'
+                        }
+                    });
+
+                    // Add labels
+                    map.addLayer({
+                        id: 'labels',
+                        type: 'symbol',
+                        source: 'facilities',
+                        layout: {
+                            'text-field': ['get', 'id'],
+                            'text-size': 10,
+                            'text-offset': [0, 1.5]
+                        },
+                        paint: {
+                            'text-color': '#333'
+                        }
+                    });
+
+                    // Render facility list
+                    renderFacilityList(data.features);
+                    
+                    // Render dashboard
+                    renderDashboard(data.features);
+
+                    // Click interaction - show facility details
+                    map.on('click', 'points', (e) => {
+                        const props = e.features[0].properties;
+                        // Switch to facilities tab
+                        switchTab('facilities');
+                        showFacilityDetails(props);
+                    });
+
+                    // Change cursor style on hover
+                    map.on('mouseenter', 'points', () => map.getCanvas().style.cursor = 'pointer');
+                    map.on('mouseleave', 'points', () => map.getCanvas().style.cursor = '');
+                });
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.tab);
+            });
+        });
+
+        // Render dashboard statistics
+        function renderDashboard(features) {
+            // Total stats
+            const totalFacilities = features.length;
+            const totalSqft = features.reduce((sum, f) => sum + f.properties.size_sqft, 0);
+            const totalEmployees = features.reduce((sum, f) => sum + f.properties.employees, 0);
+
+            document.getElementById('stat-total').textContent = totalFacilities;
+            document.getElementById('stat-sqft').textContent = (totalSqft / 1000000).toFixed(2) + 'M';
+            document.getElementById('stat-employees').textContent = totalEmployees.toLocaleString();
+
+            // Facilities by type chart
+            const typeCounts = {};
+            features.forEach(f => {
+                const type = f.properties.type;
+                typeCounts[type] = (typeCounts[type] || 0) + 1;
             });
 
-            // 添加圆点图层
-            map.addLayer({
-                id: 'points',
-                type: 'circle',
-                source: 'facilities',
-                paint: {
-                    'circle-radius': 8,
-                    'circle-color': '#d40511',
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
+            const chartContainer = document.getElementById('type-chart');
+            chartContainer.innerHTML = Object.entries(typeCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => {
+                    const percentage = (count / totalFacilities * 100).toFixed(0);
+                    const color = typeColors[type] || '#999';
+                    return `
+                        <div class="chart-bar">
+                            <div class="chart-label">${typeLabels[type] || type}</div>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar-fill" style="width: ${percentage}%; background: ${color}"></div>
+                                <span class="chart-value">${count}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
 
-            // 点击交互
-            map.on('click', 'points', (e) => {
-                const props = e.features[0].properties;
-                document.getElementById('info-content').innerHTML = `
-                    <h2>${props.name}</h2>
-                    <p><strong>ID:</strong> ${props.id}</p>
-                    <p><strong>Manager:</strong> ${props.manager}</p>
-                    <p><strong>Contact:</strong> <a href="mailto:${props.contact}">${props.contact}</a></p>
-                    <div class="guide-box">
-                        <strong>Troubleshooting:</strong><br>
-                        ${props.issue_guide}
+            // Top facilities by size
+            const topFacilities = [...features]
+                .sort((a, b) => b.properties.size_sqft - a.properties.size_sqft)
+                .slice(0, 5);
+
+            document.getElementById('top-facilities').innerHTML = topFacilities.map((f, i) => {
+                const p = f.properties;
+                const color = typeColors[p.type] || '#999';
+                return `
+                    <div class="top-facility-item" onclick="selectFacility('${p.id}'); switchTab('facilities');">
+                        <span class="top-rank">#${i + 1}</span>
+                        <div class="top-info">
+                            <span class="top-name">${p.name}</span>
+                            <span class="top-size">${p.size_sqft.toLocaleString()} sqft</span>
+                        </div>
+                        <span class="top-badge" style="background:${color}">${p.type}</span>
                     </div>
                 `;
+            }).join('');
+
+            // Facilities by state
+            const stateCounts = {};
+            features.forEach(f => {
+                const address = f.properties.address;
+                const state = address.split(',').pop().trim();
+                stateCounts[state] = (stateCounts[state] || 0) + 1;
             });
 
-            // 鼠标手势
-            map.on('mouseenter', 'points', () => map.getCanvas().style.cursor = 'pointer');
-            map.on('mouseleave', 'points', () => map.getCanvas().style.cursor = '');
+            const stateColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6'];
+            const stateChartContainer = document.getElementById('state-chart');
+            stateChartContainer.innerHTML = Object.entries(stateCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([state, count], index) => {
+                    const percentage = (count / totalFacilities * 100).toFixed(0);
+                    const color = stateColors[index % stateColors.length];
+                    return `
+                        <div class="chart-bar">
+                            <div class="chart-label">${state}</div>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar-fill" style="width: ${percentage}%; background: ${color}"></div>
+                                <span class="chart-value">${count}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            // Geographic coverage info
+            const uniqueStates = Object.keys(stateCounts).length;
+            document.getElementById('coverage-info').innerHTML = `
+                <p><strong>${uniqueStates}</strong> states covered across the US</p>
+                <p><strong>${totalFacilities}</strong> facilities nationwide</p>
+                <p>Average <strong>${Math.round(totalEmployees / uniqueStates)}</strong> employees per state</p>
+            `;
+        }
+
+        // Render facility list in sidebar
+        function renderFacilityList(features) {
+            const listContainer = document.getElementById('facility-list');
+            
+            const filteredFeatures = features.filter(f => {
+                const matchesFilter = currentFilter === 'all' || f.properties.type === currentFilter;
+                const searchTerm = document.getElementById('search-input').value.toLowerCase();
+                const matchesSearch = !searchTerm || 
+                    f.properties.name.toLowerCase().includes(searchTerm) ||
+                    f.properties.id.toLowerCase().includes(searchTerm) ||
+                    f.properties.address.toLowerCase().includes(searchTerm);
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filteredFeatures.length === 0) {
+                listContainer.innerHTML = '<p class="no-results">No facilities found</p>';
+                return;
+            }
+
+            listContainer.innerHTML = filteredFeatures.map(f => {
+                const p = f.properties;
+                const color = typeColors[p.type] || '#999';
+                return `
+                    <div class="facility-card" onclick="selectFacility('${p.id}')">
+                        <div class="facility-header">
+                            <span class="facility-badge" style="background:${color}">${p.id}</span>
+                            <span class="facility-type">${typeLabels[p.type] || p.type}</span>
+                        </div>
+                        <h3 class="facility-name">${p.name}</h3>
+                        <p class="facility-address">${p.address}</p>
+                        <div class="facility-stats">
+                            <span>📦 ${p.size_sqft.toLocaleString()} sqft</span>
+                            <span>👥 ${p.employees} employees</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Select facility from list
+        function selectFacility(id) {
+            const feature = facilitiesData.features.find(f => f.properties.id === id);
+            if (feature) {
+                // Fly to location
+                map.flyTo({
+                    center: feature.geometry.coordinates,
+                    zoom: 12
+                });
+                // Show details
+                showFacilityDetails(feature.properties);
+            }
+        }
+
+        // Show facility details panel
+        function showFacilityDetails(props) {
+            // Parse JSON strings if needed
+            const contacts = typeof props.contacts === 'string' ? JSON.parse(props.contacts) : props.contacts;
+            const equipment = typeof props.equipment === 'string' ? JSON.parse(props.equipment) : props.equipment;
+            const procedures = typeof props.emergency_procedures === 'string' ? JSON.parse(props.emergency_procedures) : props.emergency_procedures;
+            
+            const color = typeColors[props.type] || '#999';
+
+            document.getElementById('facility-list').classList.add('hidden');
+            document.getElementById('facility-details').classList.remove('hidden');
+            
+            document.getElementById('details-content').innerHTML = `
+                <div class="detail-header" style="border-left: 4px solid ${color}">
+                    <span class="detail-badge" style="background:${color}">${props.id}</span>
+                    <h2>${props.name}</h2>
+                    <p class="detail-type">${typeLabels[props.type] || props.type}</p>
+                    <p class="detail-address">📍 ${props.address}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3>📊 Facility Info</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Size</span>
+                            <span class="info-value">${props.size_sqft.toLocaleString()} sqft</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Employees</span>
+                            <span class="info-value">${props.employees}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>👥 Key Contacts</h3>
+                    <div class="contacts-grid">
+                        ${renderContact('Facility Manager', contacts.facility_manager, '🏢')}
+                        ${renderContact('IT Support', contacts.it_support, '💻')}
+                        ${renderContact('Maintenance', contacts.maintenance, '🔧')}
+                        ${renderContact('Security', contacts.security, '🔒')}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>⚙️ Equipment</h3>
+                    <ul class="equipment-list">
+                        ${equipment.map(e => `<li>${e}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="detail-section">
+                    <h3>🚨 Emergency Procedures</h3>
+                    <p class="section-hint">Select an issue type to see troubleshooting steps:</p>
+                    <div class="emergency-buttons">
+                        ${Object.keys(procedures).map(key => `
+                            <button class="emergency-btn" onclick="showProcedure('${key}', this)">
+                                ${getEmergencyIcon(key)} ${formatProcedureName(key)}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div id="procedure-steps" class="procedure-steps hidden"></div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>🗺️ Floor Plan</h3>
+                    <button class="floor-plan-btn" onclick="showFloorPlan('${props.id}')">
+                        View Floor Plan
+                    </button>
+                </div>
+            `;
+
+            // Store procedures in window for access
+            window.currentProcedures = procedures;
+        }
+
+        function renderContact(role, contact, icon) {
+            return `
+                <div class="contact-card">
+                    <div class="contact-icon">${icon}</div>
+                    <div class="contact-info">
+                        <span class="contact-role">${role}</span>
+                        <span class="contact-name">${contact.name}</span>
+                        <a href="mailto:${contact.email}" class="contact-email">${contact.email}</a>
+                        <a href="tel:${contact.phone}" class="contact-phone">${contact.phone}</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getEmergencyIcon(key) {
+            const icons = {
+                'power_outage': '⚡',
+                'hvac_failure': '❄️',
+                'security_breach': '🚨',
+                'water_leak': '💧',
+                'fire_alarm': '🔥',
+                'equipment_malfunction': '⚙️',
+                'conveyor_jam': '🔄',
+                'dock_door_malfunction': '🚪',
+                'weather_emergency': '🌪️',
+                'forklift_accident': '🚜',
+                'structural_issue': '🏗️',
+                'fuel_spill': '⛽',
+                'vehicle_fire': '🚒',
+                'hazmat_package': '☢️',
+                'system_failure': '💻',
+                'temperature_alarm': '🌡️',
+                'refrigerant_leak': '❄️',
+                'vehicle_accident': '🚗',
+                'severe_weather': '⛈️'
+            };
+            return icons[key] || '⚠️';
+        }
+
+        function formatProcedureName(key) {
+            return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function showProcedure(key, btn) {
+            const container = document.getElementById('procedure-steps');
+            
+            // If clicking the same active button, collapse it
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active');
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            // Update button states
+            document.querySelectorAll('.emergency-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const steps = window.currentProcedures[key];
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <h4>${getEmergencyIcon(key)} ${formatProcedureName(key)}</h4>
+                <ol class="steps-list">
+                    ${steps.map(step => `<li>${step}</li>`).join('')}
+                </ol>
+            `;
+        }
+
+        function showFloorPlan(facilityId) {
+            // Create modal for floor plan
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <button class="modal-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                    <h2>Floor Plan - ${facilityId}</h2>
+                    <div class="floor-plan-container">
+                        <div class="floor-plan-placeholder">
+                            <p>🏗️ Floor Plan Preview</p>
+                            <p class="placeholder-text">CAD/BIM integration would display the facility layout here.</p>
+                            <div class="sample-floor-plan">
+                                <div class="fp-zone fp-office">Office</div>
+                                <div class="fp-zone fp-warehouse">Warehouse</div>
+                                <div class="fp-zone fp-dock">Loading Dock</div>
+                                <div class="fp-zone fp-utility">Utility Room</div>
+                                <div class="fp-zone fp-it">IT Room</div>
+                            </div>
+                            <p class="placeholder-hint">In production, this would load actual CAD drawings or BIM models.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function showFacilityList() {
+            document.getElementById('facility-details').classList.add('hidden');
+            document.getElementById('facility-list').classList.remove('hidden');
+        }
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', () => {
+            // First, go back to list view if in details view
+            showFacilityList();
+            
+            if (facilitiesData) {
+                renderFacilityList(facilitiesData.features);
+            }
+        });
+
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // First, go back to list view if in details view
+                showFacilityList();
+                
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.type;
+                if (facilitiesData) {
+                    renderFacilityList(facilitiesData.features);
+                    
+                    // Update map filter
+                    if (currentFilter === 'all') {
+                        map.setFilter('points', null);
+                        map.setFilter('labels', null);
+                    } else {
+                        map.setFilter('points', ['==', ['get', 'type'], currentFilter]);
+                        map.setFilter('labels', ['==', ['get', 'type'], currentFilter]);
+                    }
+                }
+            });
         });
     </script>
 </body>
