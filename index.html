@@ -23,6 +23,7 @@
             <button class="nav-tab active" data-tab="facilities">📍 Facilities</button>
             <button class="nav-tab" data-tab="resources">📚 Resources</button>
             <button class="nav-tab" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-tab="data">📤 Data</button>
         </div>
 
         <!-- Tab: Facilities -->
@@ -153,6 +154,57 @@
             <div class="dashboard-section">
                 <h3>🗺️ Facilities by State</h3>
                 <div id="state-chart" class="type-chart"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Data Import -->
+        <div id="tab-data" class="tab-content">
+            <h2 class="tab-title">📤 Data Import</h2>
+            <p class="tab-description">Import facility data from CSV or Excel files.</p>
+            
+            <div class="upload-section">
+                <h3>📁 Upload CSV File</h3>
+                <p class="upload-hint">Upload a CSV file with facility data to add to the map.</p>
+                
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📄</div>
+                    <p>Drag & drop a CSV file here</p>
+                    <p class="upload-or">or</p>
+                    <label class="upload-btn">
+                        Choose File
+                        <input type="file" id="csv-file" accept=".csv" hidden>
+                    </label>
+                </div>
+                
+                <div id="upload-status" class="upload-status hidden"></div>
+            </div>
+            
+            <div class="template-section">
+                <h3>📋 CSV Template</h3>
+                <p>Your CSV file should have these columns:</p>
+                <div class="template-columns">
+                    <span class="col required">id</span>
+                    <span class="col required">name</span>
+                    <span class="col required">type</span>
+                    <span class="col required">address</span>
+                    <span class="col required">latitude</span>
+                    <span class="col required">longitude</span>
+                    <span class="col">size_sqft</span>
+                    <span class="col">employees</span>
+                    <span class="col">manager_name</span>
+                    <span class="col">manager_email</span>
+                    <span class="col">manager_phone</span>
+                </div>
+                <button class="download-template-btn" onclick="downloadTemplate()">
+                    ⬇️ Download Template
+                </button>
+            </div>
+            
+            <div class="import-history">
+                <h3>📊 Current Data</h3>
+                <div id="data-summary">
+                    <p>Loading data summary...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -297,6 +349,9 @@
                     
                     // Render dashboard
                     renderDashboard(data.features);
+                    
+                    // Update data summary
+                    updateDataSummary();
 
                     // Click interaction - show facility details
                     map.on('click', 'points', (e) => {
@@ -325,6 +380,129 @@
             tab.addEventListener('click', () => {
                 switchTab(tab.dataset.tab);
             });
+        });
+
+        // =============================================
+        // DATA IMPORT FUNCTIONS
+        // =============================================
+        
+        // Update data summary on Data tab
+        function updateDataSummary() {
+            if (!facilitiesData) return;
+            
+            const features = facilitiesData.features || [];
+            const byType = {};
+            features.forEach(f => {
+                const type = f.properties.type || 'unknown';
+                byType[type] = (byType[type] || 0) + 1;
+            });
+            
+            document.getElementById('data-summary').innerHTML = `
+                <div class="data-stats">
+                    <div class="data-stat">
+                        <span class="data-stat-value">${features.length}</span>
+                        <span class="data-stat-label">Total Facilities</span>
+                    </div>
+                    <div class="data-stat">
+                        <span class="data-stat-value">${Object.keys(byType).length}</span>
+                        <span class="data-stat-label">Facility Types</span>
+                    </div>
+                </div>
+                <div class="type-breakdown">
+                    ${Object.entries(byType).map(([type, count]) => `
+                        <div class="type-row">
+                            <span class="type-name">${typeLabels[type] || type}</span>
+                            <span class="type-count">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Download CSV template
+        function downloadTemplate() {
+            const template = `id,name,type,address,latitude,longitude,size_sqft,employees,manager_name,manager_email,manager_phone
+FAC-001,Main Warehouse,warehouse,123 Main St Chicago IL,41.8781,-87.6298,50000,120,John Smith,j.smith@company.com,312-555-1234
+FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,75000,200,Mike Johnson,m.johnson@company.com,214-555-5678`;
+            
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'facility_template.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (!file || !file.name.endsWith('.csv')) {
+                showUploadStatus('Please upload a CSV file.', 'error');
+                return;
+            }
+            
+            showUploadStatus('Uploading and processing...', 'info');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch(API_URL + '/api/upload/csv', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    showUploadStatus('Error: ' + result.error, 'error');
+                } else {
+                    showUploadStatus(`Success! Imported ${result.count} facilities.`, 'success');
+                    // Optionally update the map with new data
+                    console.log('Imported data:', result.data);
+                }
+            })
+            .catch(error => {
+                showUploadStatus('Upload failed: ' + error.message, 'error');
+            });
+        }
+        
+        function showUploadStatus(message, type) {
+            const status = document.getElementById('upload-status');
+            status.className = `upload-status ${type}`;
+            status.textContent = message;
+            status.classList.remove('hidden');
+        }
+        
+        // Setup file upload listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('csv-file');
+            const uploadArea = document.getElementById('upload-area');
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        handleFileUpload(e.target.files[0]);
+                    }
+                });
+            }
+            
+            if (uploadArea) {
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+                
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+                
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    if (e.dataTransfer.files[0]) {
+                        handleFileUpload(e.dataTransfer.files[0]);
+                    }
+                });
+            }
         });
 
         // Render dashboard statistics

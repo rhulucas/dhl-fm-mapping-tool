@@ -262,6 +262,112 @@ def get_emergency_procedures(facility_id):
 
 
 # =============================================================================
+# FILE UPLOAD ENDPOINTS
+# =============================================================================
+
+@app.route('/api/upload/csv', methods=['POST'])
+def upload_csv():
+    """Upload CSV file and convert to GeoJSON."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({"error": "Only CSV files are supported"}), 400
+    
+    try:
+        import pandas as pd
+        from io import StringIO
+        
+        # Read CSV content
+        content = file.read().decode('utf-8')
+        df = pd.read_csv(StringIO(content))
+        
+        # Convert to GeoJSON
+        features = []
+        for _, row in df.iterrows():
+            feature = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [float(row['longitude']), float(row['latitude'])]
+                },
+                "properties": {
+                    "id": str(row['id']),
+                    "name": str(row['name']),
+                    "type": str(row.get('type', 'warehouse')),
+                    "address": str(row['address']),
+                    "size_sqft": int(row.get('size_sqft', 10000)),
+                    "employees": int(row.get('employees', 50)),
+                    "contacts": {
+                        "facility_manager": {
+                            "name": str(row.get('manager_name', 'Manager')),
+                            "email": str(row.get('manager_email', 'manager@company.com')),
+                            "phone": str(row.get('manager_phone', '555-0000'))
+                        },
+                        "it_support": {
+                            "name": str(row.get('it_name', 'IT Support')),
+                            "email": str(row.get('it_email', 'it@company.com')),
+                            "phone": str(row.get('it_phone', '555-0001'))
+                        },
+                        "maintenance": {
+                            "name": "Maintenance Team",
+                            "email": "maintenance@company.com",
+                            "phone": "555-0002"
+                        },
+                        "security": {
+                            "name": "Security Team",
+                            "email": "security@company.com",
+                            "phone": "555-0003"
+                        }
+                    },
+                    "equipment": ["HVAC System", "Fire Suppression System", "Security System"],
+                    "emergency_procedures": {
+                        "power_outage": ["Check main breaker", "Contact facility manager", "Activate backup power"],
+                        "fire_alarm": ["Evacuate immediately", "Call 911", "Meet at assembly point"]
+                    }
+                }
+            }
+            features.append(feature)
+        
+        geojson = {"type": "FeatureCollection", "features": features}
+        
+        return jsonify({
+            "message": f"Successfully imported {len(features)} facilities",
+            "count": len(features),
+            "data": geojson
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/template', methods=['GET'])
+def get_template():
+    """Return CSV template format."""
+    template = {
+        "columns": [
+            {"name": "id", "required": True, "example": "FAC-001"},
+            {"name": "name", "required": True, "example": "Main Warehouse"},
+            {"name": "type", "required": True, "example": "warehouse"},
+            {"name": "address", "required": True, "example": "123 Main St Chicago IL"},
+            {"name": "latitude", "required": True, "example": "41.8781"},
+            {"name": "longitude", "required": True, "example": "-87.6298"},
+            {"name": "size_sqft", "required": False, "example": "50000"},
+            {"name": "employees", "required": False, "example": "120"},
+            {"name": "manager_name", "required": False, "example": "John Smith"},
+            {"name": "manager_email", "required": False, "example": "j.smith@company.com"},
+            {"name": "manager_phone", "required": False, "example": "312-555-1234"}
+        ],
+        "sample_csv": "id,name,type,address,latitude,longitude,size_sqft,employees,manager_name,manager_email,manager_phone\\nFAC-001,Main Warehouse,warehouse,123 Main St Chicago IL,41.8781,-87.6298,50000,120,John Smith,j.smith@company.com,312-555-1234"
+    }
+    return jsonify(template)
+
+
+# =============================================================================
 # RUN SERVER
 # =============================================================================
 

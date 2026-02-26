@@ -757,3 +757,205 @@ body {
 #sidebar::-webkit-scrollbar-thumb:hover {
     background: #999;
 }
+
+/* =============================================
+   DATA IMPORT TAB STYLES
+   ============================================= */
+
+.upload-section {
+    margin-bottom: 25px;
+}
+
+.upload-hint {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    background: #fafafa;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+    border-color: #d40511;
+    background: #fff5f5;
+}
+
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.upload-or {
+    color: #999;
+    font-size: 12px;
+}
+
+.upload-btn {
+    display: inline-block;
+    background: #d40511;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 10px;
+    transition: background 0.2s;
+}
+
+.upload-btn:hover {
+    background: #b30410;
+}
+
+.upload-status {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.upload-status.info {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
+}
+
+.upload-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.upload-status.error {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
+/* Template Section */
+.template-section {
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+}
+
+.template-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+}
+
+.template-section p {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.template-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.template-columns .col {
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    border: 1px solid #ddd;
+}
+
+.template-columns .col.required {
+    background: #fff3e0;
+    border-color: #ffb74d;
+    color: #e65100;
+}
+
+.download-template-btn {
+    background: #2196f3;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+.download-template-btn:hover {
+    background: #1976d2;
+}
+
+/* Import History / Data Summary */
+.import-history h3 {
+    margin: 0 0 15px 0;
+    font-size: 15px;
+}
+
+.data-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.data-stat {
+    flex: 1;
+    background: linear-gradient(135deg, #d40511 0%, #ff6b6b 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.data-stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.data-stat-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.type-breakdown {
+    background: #f9f9f9;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.type-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+.type-row:last-child {
+    border-bottom: none;
+}
+
+.type-name {
+    color: #555;
+}
+
+.type-count {
+    font-weight: 600;
+    color: #d40511;
+}
