@@ -236,9 +236,12 @@
             'cold_storage': 'Cold Storage'
         };
 
+        // API Configuration
+        const API_URL = 'https://faster99-api-eafbb2bah6hnguc4.eastus2-01.azurewebsites.net';
+
         map.on('load', () => {
-            // Load GeoJSON data
-            fetch('./data.json?v=' + Date.now())
+            // Load GeoJSON data from API
+            fetch(API_URL + '/api/facilities')
                 .then(response => response.json())
                 .then(data => {
                     facilitiesData = data;
