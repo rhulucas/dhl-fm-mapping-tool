@@ -47,6 +47,9 @@
         <div class="header">
             <h1 class="logo">⚡ Faster <span>99</span></h1>
             <p class="tagline">Facility Management Hub</p>
+            <div id="login-prompt" class="login-prompt">
+                <button onclick="showLoginModal()" class="signin-btn">🔐 Sign In</button>
+            </div>
             <div id="user-info" class="user-info hidden">
                 <span id="user-name">Guest</span>
                 <button onclick="handleLogout()" class="logout-btn">Logout</button>
@@ -404,14 +407,12 @@
         
         let currentUser = null;
         
-        // Check if user is logged in
+        // Check if user is logged in (but don't force login)
         function checkAuth() {
             const savedUser = localStorage.getItem('fm_user');
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
-                showMainApp();
-            } else {
-                showLoginModal();
+                updateUserUI();
             }
         }
         
@@ -423,10 +424,28 @@
             document.getElementById('login-modal').classList.remove('active');
         }
         
-        function showMainApp() {
-            hideLoginModal();
-            document.getElementById('user-info').classList.remove('hidden');
-            document.getElementById('user-name').textContent = currentUser.email.split('@')[0];
+        function updateUserUI() {
+            const userInfo = document.getElementById('user-info');
+            const loginPrompt = document.getElementById('login-prompt');
+            
+            if (currentUser) {
+                userInfo.classList.remove('hidden');
+                loginPrompt.classList.add('hidden');
+                document.getElementById('user-name').textContent = currentUser.email.split('@')[0];
+            } else {
+                userInfo.classList.add('hidden');
+                loginPrompt.classList.remove('hidden');
+            }
+        }
+        
+        // Check if action requires login
+        function requireLogin(action) {
+            if (!currentUser) {
+                alert('Please sign in to ' + action);
+                showLoginModal();
+                return false;
+            }
+            return true;
         }
         
         function handleLogin(event) {
@@ -444,17 +463,17 @@
             };
             
             localStorage.setItem('fm_user', JSON.stringify(currentUser));
-            showMainApp();
+            hideLoginModal();
+            updateUserUI();
         }
         
         function handleLogout() {
             localStorage.removeItem('fm_user');
             currentUser = null;
-            document.getElementById('user-info').classList.add('hidden');
-            showLoginModal();
+            updateUserUI();
         }
         
-        // Check auth on page load
+        // Check auth on page load (don't force login)
         document.addEventListener('DOMContentLoaded', checkAuth);
 
         // API Configuration
@@ -645,6 +664,8 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         function submitTicket(event) {
             event.preventDefault();
             
+            if (!requireLogin('submit a ticket')) return;
+            
             const ticket = {
                 facility_id: document.getElementById('ticket-facility').value,
                 category: document.getElementById('ticket-category').value,
@@ -750,6 +771,8 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         
         // Handle file upload
         function handleFileUpload(file) {
+            if (!requireLogin('upload data')) return;
+            
             if (!file || !file.name.endsWith('.csv')) {
                 showUploadStatus('Please upload a CSV file.', 'error');
                 return;

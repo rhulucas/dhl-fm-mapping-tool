@@ -1310,6 +1310,29 @@ body {
     margin-top: 20px;
 }
 
+/* Login Prompt in Header */
+.login-prompt {
+    margin-top: 10px;
+}
+
+.signin-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #d40511 0%, #ff6b6b 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.signin-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(212, 5, 17, 0.3);
+}
+
 /* User Info in Header */
 .user-info {
     display: flex;
