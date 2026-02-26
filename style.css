@@ -1166,6 +1166,17 @@ body {
     margin-bottom: 10px;
 }
 
+.facility-link {
+    cursor: pointer;
+    color: #d40511;
+    transition: all 0.2s;
+}
+
+.facility-link:hover {
+    text-decoration: underline;
+    color: #ff6600;
+}
+
 .priority-badge {
     padding: 2px 6px;
     border-radius: 4px;
@@ -1203,6 +1214,18 @@ body {
     background: #d40511;
     color: white;
     border-color: #d40511;
+}
+
+.ticket-actions .delete-btn {
+    background: #fff5f5;
+    border-color: #ffcccc;
+    color: #cc0000;
+}
+
+.ticket-actions .delete-btn:hover {
+    background: #cc0000;
+    color: white;
+    border-color: #cc0000;
 }
 
 /* =============================================
@@ -1365,4 +1388,153 @@ body {
     background: #d40511;
     color: white;
     border-color: #d40511;
+}
+
+/* =============================================
+   3D BIM / FLOOR PLAN STYLES
+   ============================================= */
+
+.modal-3d {
+    width: 90%;
+    max-width: 900px;
+    height: 70vh;
+    max-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-3d h2 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+}
+
+.bim-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.bim-btn {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bim-btn:hover {
+    border-color: #d40511;
+}
+
+.bim-btn.active {
+    background: #d40511;
+    color: white;
+    border-color: #d40511;
+}
+
+.bim-hint {
+    margin-left: auto;
+    font-size: 12px;
+    color: #999;
+}
+
+.bim-viewer-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 350px;
+}
+
+.threejs-container {
+    width: 100%;
+    height: 100%;
+    background: #f5f5f5;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.equipment-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    display: flex;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #555;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-dot.green { background: #27ae60; }
+.status-dot.yellow { background: #f1c40f; }
+.status-dot.red { background: #e74c3c; }
+
+.equipment-info {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 200px;
+    padding: 12px;
+    background: transparent;
+    border: none;
+}
+
+.equipment-info h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #333;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+}
+
+.equipment-info p {
+    margin: 4px 0;
+    font-size: 12px;
+    color: #333;
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.green { background: #e8f5e9; color: #2e7d32; }
+.status-badge.yellow { background: #fff3e0; color: #e65100; }
+.status-badge.red { background: #ffebee; color: #c62828; }
+
+.report-btn {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: #d40511;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.report-btn:hover {
+    background: #b30410;
 }

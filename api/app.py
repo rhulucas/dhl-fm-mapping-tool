@@ -547,6 +547,22 @@ def update_ticket(ticket_id):
     return jsonify({"error": "Ticket not found"}), 404
 
 
+@app.route('/api/tickets/<ticket_id>', methods=['DELETE'])
+def delete_ticket(ticket_id):
+    """Delete a ticket by ID."""
+    global tickets
+    
+    for i, ticket in enumerate(tickets):
+        if ticket['id'] == ticket_id:
+            deleted_ticket = tickets.pop(i)
+            return jsonify({
+                "message": "Ticket deleted",
+                "ticket": deleted_ticket
+            })
+    
+    return jsonify({"error": "Ticket not found"}), 404
+
+
 @app.route('/api/tickets/stats', methods=['GET'])
 def ticket_stats():
     """Get ticket statistics."""
