@@ -368,6 +368,208 @@ def get_template():
 
 
 # =============================================================================
+# DATA EXPORT ENDPOINTS
+# =============================================================================
+
+@app.route('/api/export/csv', methods=['GET'])
+def export_csv():
+    """Export all facilities as CSV."""
+    data = load_data()
+    features = data.get('features', [])
+    
+    # Build CSV content
+    headers = ['id', 'name', 'type', 'address', 'latitude', 'longitude', 'size_sqft', 'employees', 
+               'manager_name', 'manager_email', 'manager_phone', 'it_name', 'it_email', 'it_phone']
+    
+    rows = [','.join(headers)]
+    
+    for f in features:
+        p = f['properties']
+        coords = f['geometry']['coordinates']
+        contacts = p.get('contacts', {})
+        manager = contacts.get('facility_manager', {})
+        it = contacts.get('it_support', {})
+        
+        row = [
+            str(p.get('id', '')),
+            str(p.get('name', '')).replace(',', ';'),
+            str(p.get('type', '')),
+            str(p.get('address', '')).replace(',', ';'),
+            str(coords[1]),  # latitude
+            str(coords[0]),  # longitude
+            str(p.get('size_sqft', '')),
+            str(p.get('employees', '')),
+            str(manager.get('name', '')),
+            str(manager.get('email', '')),
+            str(manager.get('phone', '')),
+            str(it.get('name', '')),
+            str(it.get('email', '')),
+            str(it.get('phone', ''))
+        ]
+        rows.append(','.join(row))
+    
+    csv_content = '\n'.join(rows)
+    
+    from flask import Response
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=facilities_export.csv'}
+    )
+
+
+@app.route('/api/export/contacts', methods=['GET'])
+def export_contacts():
+    """Export all contacts as CSV."""
+    data = load_data()
+    features = data.get('features', [])
+    
+    headers = ['facility_id', 'facility_name', 'role', 'name', 'email', 'phone']
+    rows = [','.join(headers)]
+    
+    for f in features:
+        p = f['properties']
+        contacts = p.get('contacts', {})
+        
+        for role, contact in contacts.items():
+            row = [
+                str(p.get('id', '')),
+                str(p.get('name', '')).replace(',', ';'),
+                role.replace('_', ' ').title(),
+                str(contact.get('name', '')),
+                str(contact.get('email', '')),
+                str(contact.get('phone', ''))
+            ]
+            rows.append(','.join(row))
+    
+    csv_content = '\n'.join(rows)
+    
+    from flask import Response
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=contacts_export.csv'}
+    )
+
+
+# =============================================================================
+# TICKET SYSTEM ENDPOINTS
+# =============================================================================
+
+# In-memory ticket storage (in production, use a database)
+tickets = []
+ticket_counter = 1
+
+@app.route('/api/tickets', methods=['GET'])
+def get_tickets():
+    """Get all tickets with optional filtering."""
+    facility_id = request.args.get('facility_id')
+    status = request.args.get('status')
+    
+    result = tickets.copy()
+    
+    if facility_id:
+        result = [t for t in result if t['facility_id'] == facility_id]
+    if status:
+        result = [t for t in result if t['status'] == status]
+    
+    return jsonify({
+        "count": len(result),
+        "tickets": result
+    })
+
+
+@app.route('/api/tickets', methods=['POST'])
+def create_ticket():
+    """Create a new maintenance ticket."""
+    global ticket_counter
+    
+    if not request.json:
+        return jsonify({"error": "JSON data required"}), 400
+    
+    required = ['facility_id', 'title', 'category']
+    missing = [f for f in required if f not in request.json]
+    if missing:
+        return jsonify({"error": f"Missing required fields: {missing}"}), 400
+    
+    from datetime import datetime
+    
+    ticket = {
+        "id": f"TKT-{ticket_counter:04d}",
+        "facility_id": request.json['facility_id'],
+        "title": request.json['title'],
+        "description": request.json.get('description', ''),
+        "category": request.json['category'],
+        "priority": request.json.get('priority', 'medium'),
+        "status": "open",
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
+    }
+    
+    tickets.append(ticket)
+    ticket_counter += 1
+    
+    return jsonify({
+        "message": "Ticket created successfully",
+        "ticket": ticket
+    }), 201
+
+
+@app.route('/api/tickets/<ticket_id>', methods=['GET'])
+def get_ticket(ticket_id):
+    """Get a single ticket by ID."""
+    for ticket in tickets:
+        if ticket['id'] == ticket_id:
+            return jsonify(ticket)
+    return jsonify({"error": "Ticket not found"}), 404
+
+
+@app.route('/api/tickets/<ticket_id>', methods=['PUT'])
+def update_ticket(ticket_id):
+    """Update a ticket status or details."""
+    from datetime import datetime
+    
+    for ticket in tickets:
+        if ticket['id'] == ticket_id:
+            if request.json.get('status'):
+                ticket['status'] = request.json['status']
+            if request.json.get('priority'):
+                ticket['priority'] = request.json['priority']
+            if request.json.get('description'):
+                ticket['description'] = request.json['description']
+            ticket['updated_at'] = datetime.now().isoformat()
+            
+            return jsonify({
+                "message": "Ticket updated",
+                "ticket": ticket
+            })
+    
+    return jsonify({"error": "Ticket not found"}), 404
+
+
+@app.route('/api/tickets/stats', methods=['GET'])
+def ticket_stats():
+    """Get ticket statistics."""
+    stats = {
+        "total": len(tickets),
+        "by_status": {},
+        "by_priority": {},
+        "by_category": {}
+    }
+    
+    for t in tickets:
+        status = t.get('status', 'unknown')
+        priority = t.get('priority', 'unknown')
+        category = t.get('category', 'unknown')
+        
+        stats['by_status'][status] = stats['by_status'].get(status, 0) + 1
+        stats['by_priority'][priority] = stats['by_priority'].get(priority, 0) + 1
+        stats['by_category'][category] = stats['by_category'].get(category, 0) + 1
+    
+    return jsonify(stats)
+
+
+# =============================================================================
 # RUN SERVER
 # =============================================================================
 

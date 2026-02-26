@@ -11,11 +11,46 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>⚡ Faster <span>99</span></h1>
+                <p>Facility Management System</p>
+            </div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="your.email@faster99.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="login-role">
+                        <option value="admin">Administrator</option>
+                        <option value="manager">Facility Manager</option>
+                        <option value="technician">Maintenance Tech</option>
+                        <option value="viewer">Viewer</option>
+                    </select>
+                </div>
+                <button type="submit" class="login-btn">🔐 Sign In</button>
+            </form>
+            <p class="demo-hint">Demo: Enter any email/password to login</p>
+        </div>
+    </div>
+
     <div id="sidebar">
         <!-- Header -->
         <div class="header">
             <h1 class="logo">⚡ Faster <span>99</span></h1>
             <p class="tagline">Facility Management Hub</p>
+            <div id="user-info" class="user-info hidden">
+                <span id="user-name">Guest</span>
+                <button onclick="handleLogout()" class="logout-btn">Logout</button>
+            </div>
         </div>
 
         <!-- Navigation Tabs -->
@@ -23,6 +58,7 @@
             <button class="nav-tab active" data-tab="facilities">📍 Facilities</button>
             <button class="nav-tab" data-tab="resources">📚 Resources</button>
             <button class="nav-tab" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-tab="tickets">🎫 Tickets</button>
             <button class="nav-tab" data-tab="data">📤 Data</button>
         </div>
 
@@ -206,6 +242,80 @@
                     <p>Loading data summary...</p>
                 </div>
             </div>
+            
+            <div class="export-section">
+                <h3>📥 Export Data</h3>
+                <p>Download facility data as CSV files for Excel.</p>
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="exportFacilities()">
+                        📊 Export All Facilities
+                    </button>
+                    <button class="export-btn secondary" onclick="exportContacts()">
+                        👥 Export All Contacts
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Tickets -->
+        <div id="tab-tickets" class="tab-content">
+            <h2 class="tab-title">🎫 Work Orders</h2>
+            <p class="tab-description">Submit and track maintenance requests.</p>
+            
+            <div class="ticket-form-section">
+                <h3>📝 Submit New Request</h3>
+                <form id="ticket-form" onsubmit="submitTicket(event)">
+                    <div class="form-group">
+                        <label>Facility</label>
+                        <select id="ticket-facility" required>
+                            <option value="">Select a facility...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="ticket-category" required>
+                            <option value="">Select category...</option>
+                            <option value="hvac">HVAC Issue</option>
+                            <option value="electrical">Electrical</option>
+                            <option value="plumbing">Plumbing</option>
+                            <option value="security">Security</option>
+                            <option value="equipment">Equipment Malfunction</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="ticket-priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="ticket-title" placeholder="Brief description..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="ticket-description" placeholder="Detailed description of the issue..." rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="submit-ticket-btn">🎫 Submit Request</button>
+                </form>
+            </div>
+            
+            <div class="ticket-list-section">
+                <h3>📋 Recent Tickets</h3>
+                <div class="ticket-filters">
+                    <button class="ticket-filter active" data-status="all">All</button>
+                    <button class="ticket-filter" data-status="open">Open</button>
+                    <button class="ticket-filter" data-status="in_progress">In Progress</button>
+                    <button class="ticket-filter" data-status="resolved">Resolved</button>
+                </div>
+                <div id="ticket-list">
+                    <p class="no-tickets">No tickets yet. Submit your first request above!</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -288,6 +398,65 @@
             'cold_storage': 'Cold Storage'
         };
 
+        // =============================================
+        // USER AUTHENTICATION
+        // =============================================
+        
+        let currentUser = null;
+        
+        // Check if user is logged in
+        function checkAuth() {
+            const savedUser = localStorage.getItem('fm_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showMainApp();
+            } else {
+                showLoginModal();
+            }
+        }
+        
+        function showLoginModal() {
+            document.getElementById('login-modal').classList.add('active');
+        }
+        
+        function hideLoginModal() {
+            document.getElementById('login-modal').classList.remove('active');
+        }
+        
+        function showMainApp() {
+            hideLoginModal();
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('user-name').textContent = currentUser.email.split('@')[0];
+        }
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const role = document.getElementById('login-role').value;
+            
+            // For demo purposes, accept any credentials
+            currentUser = {
+                email: email,
+                role: role,
+                loginTime: new Date().toISOString()
+            };
+            
+            localStorage.setItem('fm_user', JSON.stringify(currentUser));
+            showMainApp();
+        }
+        
+        function handleLogout() {
+            localStorage.removeItem('fm_user');
+            currentUser = null;
+            document.getElementById('user-info').classList.add('hidden');
+            showLoginModal();
+        }
+        
+        // Check auth on page load
+        document.addEventListener('DOMContentLoaded', checkAuth);
+
         // API Configuration
         const API_URL = 'https://faster99-api-eafbb2bah6hnguc4.eastus2-01.azurewebsites.net';
 
@@ -352,6 +521,10 @@
                     
                     // Update data summary
                     updateDataSummary();
+                    
+                    // Initialize ticket system
+                    populateFacilityDropdown();
+                    loadTickets();
 
                     // Click interaction - show facility details
                     map.on('click', 'points', (e) => {
@@ -433,6 +606,147 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             a.click();
             URL.revokeObjectURL(url);
         }
+        
+        // Export facilities to CSV
+        function exportFacilities() {
+            window.open(API_URL + '/api/export/csv', '_blank');
+        }
+        
+        // Export contacts to CSV
+        function exportContacts() {
+            window.open(API_URL + '/api/export/contacts', '_blank');
+        }
+        
+        // =============================================
+        // TICKET SYSTEM FUNCTIONS
+        // =============================================
+        
+        let allTickets = [];
+        let currentTicketFilter = 'all';
+        
+        // Populate facility dropdown for tickets
+        function populateFacilityDropdown() {
+            if (!facilitiesData) return;
+            
+            const select = document.getElementById('ticket-facility');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select a facility...</option>';
+            
+            facilitiesData.features.forEach(f => {
+                const option = document.createElement('option');
+                option.value = f.properties.id;
+                option.textContent = `${f.properties.id} - ${f.properties.name}`;
+                select.appendChild(option);
+            });
+        }
+        
+        // Submit new ticket
+        function submitTicket(event) {
+            event.preventDefault();
+            
+            const ticket = {
+                facility_id: document.getElementById('ticket-facility').value,
+                category: document.getElementById('ticket-category').value,
+                priority: document.getElementById('ticket-priority').value,
+                title: document.getElementById('ticket-title').value,
+                description: document.getElementById('ticket-description').value
+            };
+            
+            fetch(API_URL + '/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ticket)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else {
+                    alert('Ticket created: ' + result.ticket.id);
+                    document.getElementById('ticket-form').reset();
+                    loadTickets();
+                }
+            })
+            .catch(error => alert('Failed to create ticket: ' + error.message));
+        }
+        
+        // Load tickets from API
+        function loadTickets() {
+            fetch(API_URL + '/api/tickets')
+                .then(response => response.json())
+                .then(result => {
+                    allTickets = result.tickets || [];
+                    renderTickets();
+                })
+                .catch(error => console.error('Failed to load tickets:', error));
+        }
+        
+        // Render ticket list
+        function renderTickets() {
+            const list = document.getElementById('ticket-list');
+            if (!list) return;
+            
+            let filtered = allTickets;
+            if (currentTicketFilter !== 'all') {
+                filtered = allTickets.filter(t => t.status === currentTicketFilter);
+            }
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<p class="no-tickets">No tickets found.</p>';
+                return;
+            }
+            
+            list.innerHTML = filtered.map(t => `
+                <div class="ticket-card ${t.priority}">
+                    <div class="ticket-header">
+                        <span class="ticket-id">${t.id}</span>
+                        <span class="ticket-status ${t.status}">${t.status.replace('_', ' ')}</span>
+                    </div>
+                    <h4 class="ticket-title">${t.title}</h4>
+                    <div class="ticket-meta">
+                        <span>📍 ${t.facility_id}</span>
+                        <span>🏷️ ${t.category}</span>
+                        <span class="priority-badge ${t.priority}">${t.priority}</span>
+                    </div>
+                    <p class="ticket-desc">${t.description || 'No description'}</p>
+                    <div class="ticket-actions">
+                        ${t.status === 'open' ? `<button onclick="updateTicketStatus('${t.id}', 'in_progress')">Start Work</button>` : ''}
+                        ${t.status === 'in_progress' ? `<button onclick="updateTicketStatus('${t.id}', 'resolved')">Mark Resolved</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Update ticket status
+        function updateTicketStatus(ticketId, newStatus) {
+            fetch(API_URL + '/api/tickets/' + ticketId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else {
+                    loadTickets();
+                }
+            })
+            .catch(error => alert('Failed to update ticket: ' + error.message));
+        }
+        
+        // Setup ticket filter listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.ticket-filter').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.ticket-filter').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTicketFilter = btn.dataset.status;
+                    renderTickets();
+                });
+            });
+        });
         
         // Handle file upload
         function handleFileUpload(file) {
