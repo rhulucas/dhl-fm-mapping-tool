@@ -1477,6 +1477,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             const statusClass = data.status === 'operational' ? 'green' : data.status === 'maintenance' ? 'yellow' : 'red';
             
             let ticketInfo = '';
+            let ticketButton = '';
             if (data.ticketId) {
                 const ticket = allTickets.find(t => t.id === data.ticketId);
                 if (ticket) {
@@ -1484,6 +1485,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                         <p class="ticket-link">🎫 <strong>${ticket.id}</strong></p>
                         <p class="ticket-title">${ticket.title}</p>
                     `;
+                    ticketButton = `<button class="view-ticket-btn" onclick="viewTicket('${ticket.id}')">📋 View Ticket</button>`;
                 }
             }
             
@@ -1492,12 +1494,38 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 <p><strong>Type:</strong> ${data.type.toUpperCase()}</p>
                 <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${data.status}</span></p>
                 ${ticketInfo}
+                ${ticketButton}
                 ${data.status === 'operational' ? '<button class="report-btn" onclick="reportIssue(\'' + data.name + '\')">🔧 Report Issue</button>' : ''}
-                ${data.status === 'fault' ? '<button class="report-btn" onclick="reportIssue(\'' + data.name + '\')">🔧 Report Issue</button>' : ''}
             `;
             info.classList.remove('hidden');
         }
         
+        // View ticket from 3D view
+        function viewTicket(ticketId) {
+            // Close 3D modal
+            cleanup3DScene();
+            document.getElementById('floor-plan-modal').remove();
+            
+            // Switch to tickets tab
+            switchTab('tickets');
+            
+            // Scroll to the ticket and highlight it
+            setTimeout(() => {
+                const ticketCard = document.querySelector(`.ticket-card .ticket-id:contains('${ticketId}')`);
+                // Highlight the ticket in the list
+                const ticketCards = document.querySelectorAll('.ticket-card');
+                ticketCards.forEach(card => {
+                    if (card.querySelector('.ticket-id')?.textContent === ticketId) {
+                        card.style.boxShadow = '0 0 10px #d40511';
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => {
+                            card.style.boxShadow = '';
+                        }, 3000);
+                    }
+                });
+            }, 200);
+        }
+
         // Store pending issue data for after login
         let pendingIssue = null;
         
