@@ -628,21 +628,22 @@ body {
 .inventory-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 11px;
 }
 
 .inventory-table th {
     background: #f5f5f5;
-    padding: 10px 12px;
+    padding: 6px 8px;
     text-align: left;
     font-weight: 600;
     color: #555;
     position: sticky;
     top: 0;
+    font-size: 10px;
 }
 
 .inventory-table td {
-    padding: 10px 12px;
+    padding: 6px 8px;
     border-bottom: 1px solid #eee;
 }
 
@@ -652,10 +653,11 @@ body {
 
 .status-pill {
     display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 9px;
     font-weight: 500;
+    text-transform: uppercase;
 }
 
 .status-pill.operational {
@@ -674,9 +676,10 @@ body {
 }
 
 .view-3d-btn {
-    padding: 4px 10px;
+    padding: 3px 8px;
     background: #d40511;
     color: white;
+    font-size: 10px;
     border: none;
     border-radius: 4px;
     font-size: 11px;
