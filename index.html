@@ -555,13 +555,22 @@
         // Check auth on page load (don't force login)
         document.addEventListener('DOMContentLoaded', checkAuth);
 
-        // API Configuration
+        // API Configuration - fallback to local data if API unavailable
         const API_URL = 'https://faster99-api-eafbb2bah6hnguc4.eastus2-01.azurewebsites.net';
+        let useLocalStorage = false; // Will be set to true if API fails
 
         map.on('load', () => {
-            // Load GeoJSON data from API
+            // Try API first, fallback to local data.json
             fetch(API_URL + '/api/facilities')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error('API unavailable');
+                    return response.json();
+                })
+                .catch(() => {
+                    console.log('API unavailable, loading local data.json');
+                    useLocalStorage = true;
+                    return fetch('data.json').then(r => r.json());
+                })
                 .then(data => {
                     facilitiesData = data;
                     
@@ -950,17 +959,31 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         // Submit new ticket
         function submitTicket(event) {
             event.preventDefault();
-            
+
             if (!requireLogin('submit a ticket')) return;
-            
+
             const ticket = {
+                id: 'TKT-' + String(allTickets.length + 1).padStart(4, '0'),
                 facility_id: document.getElementById('ticket-facility').value,
                 category: document.getElementById('ticket-category').value,
                 priority: document.getElementById('ticket-priority').value,
                 title: document.getElementById('ticket-title').value,
-                description: document.getElementById('ticket-description').value
+                description: document.getElementById('ticket-description').value,
+                status: 'open',
+                created_at: new Date().toISOString()
             };
-            
+
+            if (useLocalStorage) {
+                // Save to localStorage
+                allTickets.push(ticket);
+                saveTicketsToLocal();
+                alert('Ticket created: ' + ticket.id);
+                document.getElementById('ticket-form').reset();
+                renderTickets();
+                updateInventory();
+                return;
+            }
+
             fetch(API_URL + '/api/tickets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -976,18 +999,44 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                     loadTickets();
                 }
             })
-            .catch(error => alert('Failed to create ticket: ' + error.message));
+            .catch(error => {
+                // Fallback to localStorage
+                allTickets.push(ticket);
+                saveTicketsToLocal();
+                alert('Ticket created locally: ' + ticket.id);
+                document.getElementById('ticket-form').reset();
+                renderTickets();
+                updateInventory();
+            });
         }
         
         // Load tickets from API
         function loadTickets() {
+            if (useLocalStorage) {
+                // Load from localStorage
+                const stored = localStorage.getItem('fm_tickets');
+                allTickets = stored ? JSON.parse(stored) : [];
+                renderTickets();
+                return;
+            }
+            
             fetch(API_URL + '/api/tickets')
                 .then(response => response.json())
                 .then(result => {
                     allTickets = result.tickets || [];
                     renderTickets();
                 })
-                .catch(error => console.error('Failed to load tickets:', error));
+                .catch(error => {
+                    console.error('Failed to load tickets:', error);
+                    // Fallback to localStorage
+                    const stored = localStorage.getItem('fm_tickets');
+                    allTickets = stored ? JSON.parse(stored) : [];
+                    renderTickets();
+                });
+        }
+        
+        function saveTicketsToLocal() {
+            localStorage.setItem('fm_tickets', JSON.stringify(allTickets));
         }
         
         // Render ticket list
@@ -1050,6 +1099,17 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
 
         // Update ticket status
         function updateTicketStatus(ticketId, newStatus) {
+            if (useLocalStorage) {
+                const ticket = allTickets.find(t => t.id === ticketId);
+                if (ticket) {
+                    ticket.status = newStatus;
+                    saveTicketsToLocal();
+                    renderTickets();
+                    updateInventory();
+                }
+                return;
+            }
+            
             fetch(API_URL + '/api/tickets/' + ticketId, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -1063,7 +1123,16 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                     loadTickets();
                 }
             })
-            .catch(error => alert('Failed to update ticket: ' + error.message));
+            .catch(error => {
+                // Fallback to localStorage
+                const ticket = allTickets.find(t => t.id === ticketId);
+                if (ticket) {
+                    ticket.status = newStatus;
+                    saveTicketsToLocal();
+                    renderTickets();
+                    updateInventory();
+                }
+            });
         }
 
         // Delete ticket
@@ -1071,7 +1140,15 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             if (!confirm('Are you sure you want to delete this ticket?')) {
                 return;
             }
-            
+
+            if (useLocalStorage) {
+                allTickets = allTickets.filter(t => t.id !== ticketId);
+                saveTicketsToLocal();
+                renderTickets();
+                updateInventory();
+                return;
+            }
+
             fetch(API_URL + '/api/tickets/' + ticketId, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
@@ -1084,7 +1161,13 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                     loadTickets();
                 }
             })
-            .catch(error => alert('Failed to delete ticket: ' + error.message));
+            .catch(error => {
+                // Fallback to localStorage
+                allTickets = allTickets.filter(t => t.id !== ticketId);
+                saveTicketsToLocal();
+                renderTickets();
+                updateInventory();
+            });
         }
         
         // Setup ticket filter listeners
