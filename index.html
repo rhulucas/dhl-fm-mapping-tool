@@ -154,6 +154,75 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Equipment Inventory Section -->
+            <div class="resource-section">
+                <h2 class="section-title">📦 Equipment Inventory</h2>
+                <p class="section-desc">Real-time equipment status across all facilities</p>
+                
+                <div class="inventory-summary">
+                    <div class="inventory-stat operational">
+                        <span class="inv-number" id="inv-operational">0</span>
+                        <span class="inv-label">Operational</span>
+                    </div>
+                    <div class="inventory-stat maintenance">
+                        <span class="inv-number" id="inv-maintenance">0</span>
+                        <span class="inv-label">Maintenance</span>
+                    </div>
+                    <div class="inventory-stat fault">
+                        <span class="inv-number" id="inv-fault">0</span>
+                        <span class="inv-label">Fault</span>
+                    </div>
+                </div>
+                
+                <div class="inventory-table-container">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Facility</th>
+                                <th>Equipment</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-body">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Maintenance Calendar Section -->
+            <div class="resource-section">
+                <h2 class="section-title">📅 Maintenance Calendar</h2>
+                <p class="section-desc">Upcoming scheduled maintenance and inspections</p>
+                
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button class="cal-nav" onclick="changeMonth(-1)">◀</button>
+                        <span id="calendar-month">February 2026</span>
+                        <button class="cal-nav" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <div class="calendar-weekdays">
+                        <div class="cal-day-header">Sun</div>
+                        <div class="cal-day-header">Mon</div>
+                        <div class="cal-day-header">Tue</div>
+                        <div class="cal-day-header">Wed</div>
+                        <div class="cal-day-header">Thu</div>
+                        <div class="cal-day-header">Fri</div>
+                        <div class="cal-day-header">Sat</div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-days"></div>
+                </div>
+                
+                <div class="upcoming-maintenance">
+                    <h3>📋 Upcoming Maintenance</h3>
+                    <div id="upcoming-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tab: Dashboard -->
@@ -554,6 +623,12 @@
                     // Initialize ticket system
                     populateFacilityDropdown();
                     loadTickets();
+                    
+                    // Initialize resources
+                    setTimeout(() => {
+                        updateInventory();
+                        renderCalendar();
+                    }, 500);
 
                     // Click interaction - show facility details
                     map.on('click', 'points', (e) => {
@@ -619,6 +694,208 @@
                     `).join('')}
                 </div>
             `;
+        }
+
+        // =============================================
+        // EQUIPMENT INVENTORY
+        // =============================================
+        
+        const equipmentTypes = [
+            { name: 'HVAC Unit 1', type: 'hvac' },
+            { name: 'HVAC Unit 2', type: 'hvac' },
+            { name: 'Fire Suppression', type: 'fire' },
+            { name: 'Conveyor System', type: 'conveyor' },
+            { name: 'Security Camera', type: 'security' },
+            { name: 'Forklift Charger', type: 'forklift' },
+            { name: 'Lighting System', type: 'lighting' }
+        ];
+
+        function updateInventory() {
+            if (!facilitiesData) return;
+            
+            const inventoryData = [];
+            let operational = 0, maintenance = 0, fault = 0;
+            
+            // Generate equipment status for each facility
+            facilitiesData.features.slice(0, 20).forEach(f => {
+                const facilityId = f.properties.id;
+                
+                equipmentTypes.forEach(eq => {
+                    // Check if there's a ticket for this equipment at this facility
+                    const ticket = allTickets.find(t => 
+                        t.facility_id === facilityId && 
+                        t.title.includes(eq.name)
+                    );
+                    
+                    let status = 'operational';
+                    if (ticket) {
+                        status = ticket.status === 'resolved' ? 'operational' : 
+                                 ticket.status === 'in_progress' ? 'maintenance' : 'fault';
+                    }
+                    
+                    // Add some random variation for demo
+                    if (!ticket && Math.random() < 0.05) {
+                        status = 'maintenance';
+                    }
+                    
+                    if (status === 'operational') operational++;
+                    else if (status === 'maintenance') maintenance++;
+                    else fault++;
+                    
+                    inventoryData.push({
+                        facility: facilityId,
+                        facilityName: f.properties.name,
+                        equipment: eq.name,
+                        type: eq.type,
+                        status: status
+                    });
+                });
+            });
+            
+            // Update summary stats
+            document.getElementById('inv-operational').textContent = operational;
+            document.getElementById('inv-maintenance').textContent = maintenance;
+            document.getElementById('inv-fault').textContent = fault;
+            
+            // Populate table (show non-operational first)
+            const tbody = document.getElementById('inventory-body');
+            const sortedData = inventoryData.sort((a, b) => {
+                const order = { fault: 0, maintenance: 1, operational: 2 };
+                return order[a.status] - order[b.status];
+            }).slice(0, 50);
+            
+            tbody.innerHTML = sortedData.map(item => `
+                <tr>
+                    <td>${item.facility}</td>
+                    <td>${item.equipment}</td>
+                    <td>${item.type.toUpperCase()}</td>
+                    <td><span class="status-pill ${item.status}">${item.status}</span></td>
+                    <td><button class="view-3d-btn" onclick="goToFacility3D('${item.facility}')">View 3D</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function goToFacility3D(facilityId) {
+            // Go to facility and open 3D view
+            if (facilitiesData) {
+                const feature = facilitiesData.features.find(f => f.properties.id === facilityId);
+                if (feature) {
+                    switchTab('facilities');
+                    showFacilityDetails(feature.properties);
+                    setTimeout(() => showFloorPlan(facilityId), 300);
+                }
+            }
+        }
+
+        // =============================================
+        // MAINTENANCE CALENDAR
+        // =============================================
+        
+        let currentCalendarDate = new Date();
+        
+        // Sample maintenance schedule
+        const maintenanceSchedule = [
+            { date: new Date(2026, 1, 28), title: 'HVAC Inspection', facility: 'DC-001', type: 'Preventive' },
+            { date: new Date(2026, 2, 3), title: 'Fire System Test', facility: 'HB-002', type: 'Safety' },
+            { date: new Date(2026, 2, 5), title: 'Conveyor Maintenance', facility: 'WH-018', type: 'Preventive' },
+            { date: new Date(2026, 2, 10), title: 'Security Audit', facility: 'CS-006', type: 'Compliance' },
+            { date: new Date(2026, 2, 15), title: 'Electrical Inspection', facility: 'DC-005', type: 'Safety' },
+            { date: new Date(2026, 2, 20), title: 'Loading Dock Service', facility: 'HB-074', type: 'Preventive' },
+            { date: new Date(2026, 2, 25), title: 'Generator Test', facility: 'WH-045', type: 'Safety' },
+            { date: new Date(2026, 3, 1), title: 'Quarterly HVAC Service', facility: 'DC-001', type: 'Preventive' },
+            { date: new Date(2026, 3, 8), title: 'Roof Inspection', facility: 'HB-002', type: 'Preventive' },
+            { date: new Date(2026, 3, 15), title: 'Pest Control', facility: 'WH-063', type: 'Preventive' }
+        ];
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            
+            // Update header
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
+            
+            // Get first day of month and total days
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            
+            const today = new Date();
+            let html = '';
+            
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                html += `<div class="cal-day other-month">${daysInPrevMonth - i}</div>`;
+            }
+            
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const isToday = date.toDateString() === today.toDateString();
+                const hasEvent = maintenanceSchedule.some(m => 
+                    m.date.toDateString() === date.toDateString()
+                );
+                
+                let classes = 'cal-day';
+                if (isToday) classes += ' today';
+                if (hasEvent) classes += ' has-event';
+                
+                html += `<div class="${classes}" onclick="showDayEvents(${year}, ${month}, ${day})">${day}</div>`;
+            }
+            
+            // Next month days
+            const totalCells = firstDay + daysInMonth;
+            const remaining = 42 - totalCells;
+            for (let i = 1; i <= remaining && totalCells + i <= 42; i++) {
+                html += `<div class="cal-day other-month">${i}</div>`;
+            }
+            
+            document.getElementById('calendar-days').innerHTML = html;
+            
+            // Update upcoming list
+            renderUpcomingMaintenance();
+        }
+
+        function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function showDayEvents(year, month, day) {
+            const date = new Date(year, month, day);
+            const events = maintenanceSchedule.filter(m => 
+                m.date.toDateString() === date.toDateString()
+            );
+            
+            if (events.length > 0) {
+                alert(events.map(e => `${e.title} at ${e.facility}`).join('\n'));
+            }
+        }
+
+        function renderUpcomingMaintenance() {
+            const today = new Date();
+            const upcoming = maintenanceSchedule
+                .filter(m => m.date >= today)
+                .sort((a, b) => a.date - b.date)
+                .slice(0, 5);
+            
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            document.getElementById('upcoming-list').innerHTML = upcoming.map(m => `
+                <div class="maintenance-item">
+                    <div class="maint-date">
+                        <span class="maint-day">${m.date.getDate()}</span>
+                        <span class="maint-month">${monthNames[m.date.getMonth()]}</span>
+                    </div>
+                    <div class="maint-details">
+                        <h4>${m.title}</h4>
+                        <p>📍 ${m.facility}</p>
+                        <span class="maint-type">${m.type}</span>
+                    </div>
+                </div>
+            `).join('');
         }
         
         // Download CSV template
