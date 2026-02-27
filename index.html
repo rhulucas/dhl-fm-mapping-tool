@@ -569,7 +569,10 @@
                 .catch(() => {
                     console.log('API unavailable, loading local data.json');
                     useLocalStorage = true;
-                    return fetch('data.json').then(r => r.json());
+                    return fetch('data.json').then(r => {
+                        if (!r.ok) throw new Error('data.json not found');
+                        return r.json();
+                    });
                 })
                 .then(data => {
                     facilitiesData = data;
@@ -650,6 +653,11 @@
                     // Change cursor style on hover
                     map.on('mouseenter', 'points', () => map.getCanvas().style.cursor = 'pointer');
                     map.on('mouseleave', 'points', () => map.getCanvas().style.cursor = '');
+                })
+                .catch(error => {
+                    console.error('Failed to load facilities:', error);
+                    document.getElementById('facility-list').innerHTML = 
+                        '<p style="color: #e74c3c; padding: 20px;">Failed to load facilities. Please refresh the page.</p>';
                 });
         });
 
