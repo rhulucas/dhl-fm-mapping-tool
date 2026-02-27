@@ -1522,8 +1522,6 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         }
         
         function processIssueReport(issueData) {
-            console.log('processIssueReport called with:', issueData);
-            
             // Close 3D modal if exists
             const modal = document.getElementById('floor-plan-modal');
             if (modal) {
@@ -1536,16 +1534,9 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             
             // Use setTimeout to ensure tab is fully switched
             setTimeout(() => {
-                console.log('Setting form values:');
-                console.log('- facilityId:', issueData.facilityId);
-                console.log('- equipmentData:', issueData.equipmentData);
-                
                 // Auto-fill facility
                 if (issueData.facilityId) {
-                    const select = document.getElementById('ticket-facility');
-                    console.log('- dropdown options:', Array.from(select.options).slice(0, 5).map(o => o.value));
-                    select.value = issueData.facilityId;
-                    console.log('- after set, value is:', select.value);
+                    document.getElementById('ticket-facility').value = issueData.facilityId;
                 }
                 
                 // Auto-fill category based on equipment type
