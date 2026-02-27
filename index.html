@@ -468,6 +468,13 @@
             localStorage.setItem('fm_user', JSON.stringify(currentUser));
             hideLoginModal();
             updateUserUI();
+            
+            // Check if there's a pending issue to report
+            if (pendingIssue) {
+                const issue = pendingIssue;
+                pendingIssue = null;
+                processIssueReport(issue);
+            }
         }
         
         function handleLogout() {
@@ -1207,6 +1214,10 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         }
 
         function showFloorPlan(facilityId) {
+            // Store current facility ID for report issue
+            current3DFacilityId = facilityId;
+            currentEquipmentData = null;
+            
             // Create modal for 3D floor plan
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -1240,6 +1251,8 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         
         let scene, camera, renderer, controls;
         let equipmentObjects = [];
+        let current3DFacilityId = null;
+        let currentEquipmentData = null;
         
         function init3DScene(facilityId) {
             const container = document.getElementById('threejs-container');
@@ -1457,6 +1470,9 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         }
         
         function showEquipmentInfo(data) {
+            // Store current equipment data for report issue
+            currentEquipmentData = data;
+            
             const info = document.getElementById('equipment-info');
             const statusClass = data.status === 'operational' ? 'green' : data.status === 'maintenance' ? 'yellow' : 'red';
             
@@ -1482,11 +1498,76 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             info.classList.remove('hidden');
         }
         
+        // Store pending issue data for after login
+        let pendingIssue = null;
+        
         function reportIssue(equipmentName) {
-            if (!requireLogin('report an issue')) return;
+            // Save issue data first (before any modals close)
+            const issueData = {
+                facilityId: current3DFacilityId,
+                equipmentData: currentEquipmentData,
+                equipmentName: equipmentName
+            };
+            
+            // Check login - if not logged in, save data and show login
+            if (!currentUser) {
+                pendingIssue = issueData;
+                alert('Please sign in to report an issue');
+                showLoginModal();
+                return;
+            }
+            
+            // Process the issue
+            processIssueReport(issueData);
+        }
+        
+        function processIssueReport(issueData) {
+            console.log('processIssueReport called with:', issueData);
+            
+            // Close 3D modal if exists
+            const modal = document.getElementById('floor-plan-modal');
+            if (modal) {
+                cleanup3DScene();
+                modal.remove();
+            }
+            
+            // Switch to tickets tab
             switchTab('tickets');
-            document.getElementById('floor-plan-modal').remove();
-            document.getElementById('ticket-title').value = 'Equipment Issue: ' + equipmentName;
+            
+            // Use setTimeout to ensure tab is fully switched
+            setTimeout(() => {
+                console.log('Setting form values:');
+                console.log('- facilityId:', issueData.facilityId);
+                console.log('- equipmentData:', issueData.equipmentData);
+                
+                // Auto-fill facility
+                if (issueData.facilityId) {
+                    const select = document.getElementById('ticket-facility');
+                    console.log('- dropdown options:', Array.from(select.options).slice(0, 5).map(o => o.value));
+                    select.value = issueData.facilityId;
+                    console.log('- after set, value is:', select.value);
+                }
+                
+                // Auto-fill category based on equipment type
+                if (issueData.equipmentData) {
+                    const typeToCategory = {
+                        'hvac': 'hvac',
+                        'fire': 'equipment',
+                        'conveyor': 'equipment',
+                        'security': 'security',
+                        'forklift': 'equipment',
+                        'lighting': 'electrical'
+                    };
+                    const category = typeToCategory[issueData.equipmentData.type] || 'equipment';
+                    document.getElementById('ticket-category').value = category;
+                }
+                
+                // Auto-fill title
+                document.getElementById('ticket-title').value = 'Equipment Issue: ' + issueData.equipmentName;
+                
+                // Scroll to form
+                document.querySelector('.ticket-form-section').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         }
         
         function setViewMode(mode) {
