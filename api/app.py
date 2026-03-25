@@ -570,10 +570,21 @@ def delete_ticket(ticket_id):
 def get_openai_client():
     """Get OpenAI client with API key from environment."""
     from openai import OpenAI
-    api_key = os.environ.get('OPENAI_API_KEY')
+    api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('openai_api_key')
     if not api_key:
         return None
     return OpenAI(api_key=api_key)
+
+
+@app.route('/api/ai/debug', methods=['GET'])
+def ai_debug():
+    """Debug: check if OPENAI_API_KEY is configured (does not reveal the key)."""
+    key = os.environ.get('OPENAI_API_KEY') or os.environ.get('openai_api_key')
+    return jsonify({
+        "OPENAI_API_KEY_set": bool(key),
+        "key_prefix": key[:10] + "..." if key else None,
+        "all_env_keys": [k for k in os.environ.keys() if 'OPENAI' in k.upper() or 'openai' in k.lower()]
+    })
 
 
 @app.route('/api/ai/ticket-suggest', methods=['POST'])
