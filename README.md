@@ -8,6 +8,10 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 
 > Demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
 
+**Scan to open on mobile:**
+
+![QR Code](https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://zealous-beach-008e8110f.2.azurestaticapps.net)
+
 ## Features
 
 ### 🗺️ Interactive Mapping
@@ -33,6 +37,12 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 - Maintenance calendar with scheduled tasks
 - Data import/export (CSV)
 
+### 📱 Mobile Responsive
+- Optimized layout for iPhone and Android
+- Map on top, sidebar below for easy one-hand navigation
+- Scrollable tabs and touch-friendly buttons
+- Tested on iPhone 11
+
 ### 🔐 Authentication & Database
 - Real user authentication via Supabase Auth (email/password)
 - Persistent ticket storage in Supabase PostgreSQL database
@@ -48,7 +58,8 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 
 - **Frontend**: HTML, CSS, JavaScript, Mapbox GL JS, Three.js
 - **Backend**: Python, Flask, Gunicorn
-- **Database**: Supabase (PostgreSQL) — authentication & ticket storage
+- **Database**: Supabase (PostgreSQL) — authentication, real-time sync & ticket storage
+- **Charts**: Chart.js — donut and bar charts
 - **Cloud**: Azure Static Web Apps, Azure App Service
 - **CI/CD**: GitHub Actions
 - **Data**: GeoJSON
