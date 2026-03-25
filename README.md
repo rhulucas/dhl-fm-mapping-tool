@@ -6,7 +6,7 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 
 - **Frontend**: https://zealous-beach-008e8110f.2.azurestaticapps.net
 
-> Note: Demo works fully offline - facility data loads from local backup if API is unavailable.
+> Demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
 
 ## Features
 
@@ -33,19 +33,25 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 - Maintenance calendar with scheduled tasks
 - Data import/export (CSV)
 
+### 🔐 Authentication & Database
+- Real user authentication via Supabase Auth (email/password)
+- Persistent ticket storage in Supabase PostgreSQL database
+- Tickets shared across all users in real-time
+- Role-based access (Administrator, Manager, Technician, Viewer)
+
 ### 🔧 Technical Features
 - RESTful API backend
-- Offline support with localStorage fallback
-- Role-based demo login
-- Full-stack Azure deployment
+- Full-stack Azure + Supabase deployment
+- CI/CD with GitHub Actions
 
 ## Tech Stack
 
 - **Frontend**: HTML, CSS, JavaScript, Mapbox GL JS, Three.js
 - **Backend**: Python, Flask, Gunicorn
+- **Database**: Supabase (PostgreSQL) — authentication & ticket storage
 - **Cloud**: Azure Static Web Apps, Azure App Service
 - **CI/CD**: GitHub Actions
-- **Data**: GeoJSON, localStorage (offline support)
+- **Data**: GeoJSON
 
 ## Local Development
 
@@ -126,9 +132,9 @@ API will be available at http://localhost:5000
 - **Mapping**: Mapbox GL JS, GeoJSON data handling, custom markers
 - **Backend Development**: Python Flask, RESTful API design
 - **Cloud Deployment**: Azure Static Web Apps, Azure App Service
+- **Database Integration**: Supabase Auth, PostgreSQL, Row Level Security
 - **DevOps**: CI/CD with GitHub Actions, automated deployments
 - **UX Design**: Intuitive navigation, status workflows, data visualization
-- **Offline Support**: localStorage fallback, graceful degradation
 
 ## License
 
