@@ -564,49 +564,61 @@ def delete_ticket(ticket_id):
 
 
 # =============================================================================
-# AI ENDPOINTS
+# AI ENDPOINTS  (uses urllib — no external SDK required)
 # =============================================================================
 
-def get_openai_client():
-    """Get OpenAI client with API key from environment."""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        return None
-    api_key = (os.environ.get('OPENAI_API_KEY') or
-               os.environ.get('openai_api_key') or
-               os.environ.get('faster99_openai_api'))
+import urllib.request
+import urllib.error
+
+def get_openai_key():
+    return (os.environ.get('OPENAI_API_KEY') or
+            os.environ.get('openai_api_key') or
+            os.environ.get('faster99_openai_api'))
+
+
+def call_openai(prompt, max_tokens=400, json_mode=True):
+    """Call OpenAI chat completions via urllib (no SDK needed)."""
+    api_key = get_openai_key()
     if not api_key:
-        return None
-    try:
-        return OpenAI(api_key=api_key)
-    except Exception:
-        return None
+        raise ValueError("API key not configured")
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.3
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/chat/completions',
+        data=data,
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read().decode('utf-8'))
+        return result['choices'][0]['message']['content']
 
 
 @app.route('/api/ai/debug', methods=['GET'])
 def ai_debug():
-    """Debug: check if AI key is configured (does not reveal the key)."""
-    key = (os.environ.get('OPENAI_API_KEY') or
-           os.environ.get('openai_api_key') or
-           os.environ.get('faster99_openai_api'))
-    try:
-        from openai import OpenAI
-        openai_installed = True
-    except ImportError:
-        openai_installed = False
+    """Debug: check if AI key is configured."""
+    key = get_openai_key()
     return jsonify({
         "key_set": bool(key),
-        "key_prefix": key[:10] + "..." if key else None,
-        "openai_installed": openai_installed
+        "key_prefix": key[:10] + "..." if key else None
     })
 
 
 @app.route('/api/ai/ticket-suggest', methods=['POST'])
 def ai_ticket_suggest():
     """AI suggests ticket category, priority, and repair steps from description."""
-    client = get_openai_client()
-    if not client:
+    if not get_openai_key():
         return jsonify({"error": "AI service not configured"}), 503
 
     body = request.get_json() or {}
@@ -628,16 +640,8 @@ Respond in JSON with these fields:
 Return only valid JSON, no extra text."""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=400,
-            response_format={"type": "json_object"}
-        )
-        result = response.choices[0].message.content
-        import json as _json
-        return jsonify(_json.loads(result))
+        result = call_openai(prompt, max_tokens=400, json_mode=True)
+        return jsonify(json.loads(result))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -645,8 +649,7 @@ Return only valid JSON, no extra text."""
 @app.route('/api/ai/dashboard-summary', methods=['POST'])
 def ai_dashboard_summary():
     """AI generates a plain-English summary of current facility & ticket stats."""
-    client = get_openai_client()
-    if not client:
+    if not get_openai_key():
         return jsonify({"error": "AI service not configured"}), 503
 
     body = request.get_json() or {}
@@ -660,14 +663,8 @@ Highlight anything that needs attention. Be direct and professional.
 Return only the summary text, no JSON."""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=200
-        )
-        summary = response.choices[0].message.content.strip()
-        return jsonify({"summary": summary})
+        summary = call_openai(prompt, max_tokens=200, json_mode=False)
+        return jsonify({"summary": summary.strip()})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -675,8 +672,7 @@ Return only the summary text, no JSON."""
 @app.route('/api/ai/equipment-diagnosis', methods=['POST'])
 def ai_equipment_diagnosis():
     """AI diagnoses equipment issues and suggests repair actions."""
-    client = get_openai_client()
-    if not client:
+    if not get_openai_key():
         return jsonify({"error": "AI service not configured"}), 503
 
     body = request.get_json() or {}
@@ -698,16 +694,8 @@ Respond in JSON with:
 Return only valid JSON, no extra text."""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=400,
-            response_format={"type": "json_object"}
-        )
-        result = response.choices[0].message.content
-        import json as _json
-        return jsonify(_json.loads(result))
+        result = call_openai(prompt, max_tokens=400, json_mode=True)
+        return jsonify(json.loads(result))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
