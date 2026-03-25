@@ -563,6 +563,129 @@ def delete_ticket(ticket_id):
     return jsonify({"error": "Ticket not found"}), 404
 
 
+# =============================================================================
+# AI ENDPOINTS
+# =============================================================================
+
+def get_openai_client():
+    """Get OpenAI client with API key from environment."""
+    from openai import OpenAI
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        return None
+    return OpenAI(api_key=api_key)
+
+
+@app.route('/api/ai/ticket-suggest', methods=['POST'])
+def ai_ticket_suggest():
+    """AI suggests ticket category, priority, and repair steps from description."""
+    client = get_openai_client()
+    if not client:
+        return jsonify({"error": "AI service not configured"}), 503
+
+    body = request.get_json() or {}
+    description = body.get('description', '').strip()
+    facility_id = body.get('facility_id', 'unknown')
+
+    if not description:
+        return jsonify({"error": "description is required"}), 400
+
+    prompt = f"""You are a facility management expert. A technician at facility {facility_id} reported:
+"{description}"
+
+Respond in JSON with these fields:
+- category: one of [hvac, electrical, plumbing, structural, safety, equipment, it, cleaning, other]
+- priority: one of [low, medium, high, critical]
+- title: a concise ticket title (max 8 words)
+- steps: list of 3-5 recommended repair/inspection steps
+
+Return only valid JSON, no extra text."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=400,
+            response_format={"type": "json_object"}
+        )
+        result = response.choices[0].message.content
+        import json as _json
+        return jsonify(_json.loads(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ai/dashboard-summary', methods=['POST'])
+def ai_dashboard_summary():
+    """AI generates a plain-English summary of current facility & ticket stats."""
+    client = get_openai_client()
+    if not client:
+        return jsonify({"error": "AI service not configured"}), 503
+
+    body = request.get_json() or {}
+    stats = body.get('stats', {})
+
+    prompt = f"""You are a facility operations analyst. Here are today's stats:
+{stats}
+
+Write a concise 2-3 sentence operations summary for a facility manager.
+Highlight anything that needs attention. Be direct and professional.
+Return only the summary text, no JSON."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=200
+        )
+        summary = response.choices[0].message.content.strip()
+        return jsonify({"summary": summary})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ai/equipment-diagnosis', methods=['POST'])
+def ai_equipment_diagnosis():
+    """AI diagnoses equipment issues and suggests repair actions."""
+    client = get_openai_client()
+    if not client:
+        return jsonify({"error": "AI service not configured"}), 503
+
+    body = request.get_json() or {}
+    equipment_name = body.get('name', 'Unknown Equipment')
+    status = body.get('status', 'fault')
+    facility_id = body.get('facility_id', 'unknown')
+
+    prompt = f"""You are a facility maintenance expert. Equipment report:
+- Facility: {facility_id}
+- Equipment: {equipment_name}
+- Status: {status}
+
+Respond in JSON with:
+- likely_causes: list of 2-3 most probable causes
+- immediate_actions: list of 2-3 actions to take now
+- estimated_downtime: estimated repair time (e.g. "2-4 hours", "1-2 days")
+- severity: one of [low, medium, high, critical]
+
+Return only valid JSON, no extra text."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=400,
+            response_format={"type": "json_object"}
+        )
+        result = response.choices[0].message.content
+        import json as _json
+        return jsonify(_json.loads(result))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/tickets/stats', methods=['GET'])
 def ticket_stats():
     """Get ticket statistics."""

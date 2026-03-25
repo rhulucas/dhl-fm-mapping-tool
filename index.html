@@ -319,6 +319,14 @@
                     <canvas id="state-chart"></canvas>
                 </div>
             </div>
+
+            <div class="dashboard-section" id="ai-summary-section">
+                <h3>🤖 AI Operations Summary</h3>
+                <div id="ai-summary-box" style="background:#f0f4ff;border:1px solid #c5cff5;border-radius:10px;padding:14px;min-height:48px;font-size:13px;color:#333;line-height:1.6;">
+                    <span style="color:#999;">Click the button to generate an AI summary.</span>
+                </div>
+                <button onclick="aiDashboardSummary()" id="ai-summary-btn" style="margin-top:10px;width:100%;padding:9px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">✨ Generate AI Summary</button>
+            </div>
         </div>
 
         <!-- Tab: Data Import -->
@@ -428,12 +436,14 @@
                         <label>Description</label>
                         <textarea id="ticket-description" placeholder="Detailed description of the issue..." rows="3"></textarea>
                     </div>
+                    <button type="button" onclick="aiTicketSuggest()" id="ai-suggest-btn" style="width:100%;padding:9px;margin-bottom:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">✨ AI Auto-Fill Suggestions</button>
+                    <div id="ai-ticket-result" style="display:none;background:#f0f4ff;border:1px solid #c5cff5;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px;"></div>
                     <button type="submit" class="submit-ticket-btn">🎫 Submit Request</button>
                 </form>
             </div>
             
             <div class="ticket-list-section">
-                <h3>📋 Recent Tickets</h3>
+                <h3>📋 Recent Tickets <button id="notif-btn" onclick="enableNotifications()" style="font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:#f5f5f5;cursor:pointer;margin-left:8px;">🔔 Enable Alerts</button></h3>
                 <input type="text" id="ticket-search" placeholder="🔍 Search tickets..." oninput="renderTickets()" style="width:100%;padding:8px 12px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;margin-bottom:10px;">
                 <div class="ticket-filters">
                     <button class="ticket-filter active" data-status="all">All</button>
@@ -534,12 +544,18 @@
         // Supabase initialization
         const SUPABASE_URL = 'https://fhivvonsjeqbrupnxpki.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_y_hICxYBRf-PWpsxPDcFvA_OX5foVNG';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let supabaseClient = null;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) {
+            console.warn('Supabase failed to initialize:', e.message);
+        }
 
         let currentUser = null;
 
         // Check if user is logged in via Supabase session
         async function checkAuth() {
+            if (!supabaseClient) return;
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 currentUser = {
@@ -593,6 +609,17 @@
             btn.textContent = 'Signing in...';
             btn.disabled = true;
 
+            if (!supabaseClient) {
+                // Offline mode: accept any login
+                currentUser = { email, role, loginTime: new Date().toISOString() };
+                localStorage.setItem('fm_role', role);
+                btn.textContent = '🔐 Sign In';
+                btn.disabled = false;
+                hideLoginModal();
+                updateUserUI();
+                return;
+            }
+
             // Try sign in first, auto-register if new user
             let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
@@ -642,7 +669,7 @@
         }
 
         async function handleLogout() {
-            await supabaseClient.auth.signOut();
+            if (supabaseClient) await supabaseClient.auth.signOut();
             localStorage.removeItem('fm_role');
             currentUser = null;
             updateUserUI();
@@ -653,23 +680,25 @@
             checkAuth();
             initTheme();
             // Real-time ticket sync
-            supabaseClient
-                .channel('tickets-realtime')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tickets' }, (payload) => {
-                    loadTickets();
-                    const t = payload.new;
-                    if (t && t.user_email !== (currentUser?.email)) {
-                        showNotification('New Ticket from ' + (t.user_email || 'someone'), `${t.title} — ${t.facility_id}`);
-                    }
-                })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
-                    loadTickets();
-                })
-                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tickets' }, () => {
-                    loadTickets();
-                })
-                .subscribe();
-            requestNotificationPermission();
+            if (supabaseClient) {
+                supabaseClient
+                    .channel('tickets-realtime')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tickets' }, (payload) => {
+                        loadTickets();
+                        const t = payload.new;
+                        if (t && t.user_email !== (currentUser?.email)) {
+                            showNotification('New Ticket from ' + (t.user_email || 'someone'), `${t.title} — ${t.facility_id}`);
+                        }
+                    })
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
+                        loadTickets();
+                    })
+                    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tickets' }, () => {
+                        loadTickets();
+                    })
+                    .subscribe();
+            }
+            updateNotifButton();
         });
 
         // API Configuration - fallback to local data if API unavailable
@@ -1081,11 +1110,171 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             });
         }
         
-        // Submit new ticket
-        // Request browser notification permission
-        function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
+        // =============================================
+        // AI FEATURES
+        // =============================================
+
+        async function aiTicketSuggest() {
+            const description = document.getElementById('ticket-description').value.trim();
+            const facilityId = document.getElementById('ticket-facility').value;
+            if (!description) {
+                alert('Please enter a description first, then click AI Suggestions.');
+                return;
+            }
+            const btn = document.getElementById('ai-suggest-btn');
+            const resultBox = document.getElementById('ai-ticket-result');
+            btn.textContent = '✨ Thinking...';
+            btn.disabled = true;
+            resultBox.style.display = 'none';
+
+            try {
+                const res = await fetch(API_URL + '/api/ai/ticket-suggest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description, facility_id: facilityId || 'general' })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                // Auto-fill form fields
+                if (data.category) {
+                    const catSel = document.getElementById('ticket-category');
+                    for (let opt of catSel.options) {
+                        if (opt.value === data.category) { catSel.value = data.category; break; }
+                    }
+                }
+                if (data.priority) {
+                    const priSel = document.getElementById('ticket-priority');
+                    for (let opt of priSel.options) {
+                        if (opt.value === data.priority) { priSel.value = data.priority; break; }
+                    }
+                }
+                if (data.title) document.getElementById('ticket-title').value = data.title;
+
+                // Show steps
+                const steps = (data.steps || []).map((s, i) => `<li>${s}</li>`).join('');
+                resultBox.innerHTML = `<strong>🤖 AI Recommended Steps:</strong><ol style="margin:6px 0 0 16px;padding:0;">${steps}</ol>`;
+                resultBox.style.display = 'block';
+            } catch (e) {
+                resultBox.innerHTML = `<span style="color:#c0392b;">AI unavailable: ${e.message}</span>`;
+                resultBox.style.display = 'block';
+            } finally {
+                btn.textContent = '✨ AI Auto-Fill Suggestions';
+                btn.disabled = false;
+            }
+        }
+
+        async function aiDashboardSummary() {
+            const btn = document.getElementById('ai-summary-btn');
+            const box = document.getElementById('ai-summary-box');
+            btn.textContent = '✨ Generating...';
+            btn.disabled = true;
+            box.innerHTML = '<span style="color:#999;">Analyzing data...</span>';
+
+            // Gather current stats
+            const stats = {
+                total_facilities: document.getElementById('stat-total')?.textContent || '?',
+                total_sqft: document.getElementById('stat-sqft')?.textContent || '?',
+                total_employees: document.getElementById('stat-employees')?.textContent || '?',
+                total_tickets: allTickets.length,
+                open_tickets: allTickets.filter(t => t.status === 'open').length,
+                in_progress_tickets: allTickets.filter(t => t.status === 'in_progress').length,
+                resolved_tickets: allTickets.filter(t => t.status === 'resolved').length,
+                critical_tickets: allTickets.filter(t => t.priority === 'critical' || t.priority === 'high').length,
+                date: new Date().toLocaleDateString()
+            };
+
+            try {
+                const res = await fetch(API_URL + '/api/ai/dashboard-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stats })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                box.innerHTML = `<span style="color:#444;">${data.summary}</span>`;
+            } catch (e) {
+                box.innerHTML = `<span style="color:#c0392b;">AI unavailable: ${e.message}</span>`;
+            } finally {
+                btn.textContent = '✨ Generate AI Summary';
+                btn.disabled = false;
+            }
+        }
+
+        function aiEquipmentDiagnosisFromCurrent() {
+            if (!currentEquipmentData) return;
+            aiEquipmentDiagnosis(currentEquipmentData.name, currentEquipmentData.status, current3DFacilityId || 'unknown');
+        }
+
+        async function aiEquipmentDiagnosis(equipmentName, status, facilityId) {
+            const infoDiv = document.getElementById('equipment-info');
+            if (!infoDiv) return;
+            infoDiv.classList.remove('hidden');
+            infoDiv.innerHTML = `<strong>${equipmentName}</strong><br><em>Status: ${status}</em><br><br><span style="color:#999;">🤖 AI diagnosing...</span>`;
+
+            try {
+                const res = await fetch(API_URL + '/api/ai/equipment-diagnosis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: equipmentName, status, facility_id: facilityId || 'unknown' })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                const causes = (data.likely_causes || []).map(c => `<li>${c}</li>`).join('');
+                const actions = (data.immediate_actions || []).map(a => `<li>${a}</li>`).join('');
+                const severityColor = { low: '#2ecc71', medium: '#f39c12', high: '#e67e22', critical: '#e74c3c' }[data.severity] || '#999';
+
+                infoDiv.innerHTML = `
+                    <div style="font-size:12px;line-height:1.5;">
+                    <strong style="font-size:13px;">${equipmentName}</strong>
+                    <span style="float:right;background:${severityColor};color:white;padding:1px 7px;border-radius:10px;font-size:10px;">${data.severity || status}</span>
+                    <hr style="margin:6px 0;border-color:#ddd;">
+                    <strong>🔍 Likely Causes:</strong>
+                    <ol style="margin:3px 0 6px 14px;padding:0;">${causes}</ol>
+                    <strong>⚡ Immediate Actions:</strong>
+                    <ol style="margin:3px 0 6px 14px;padding:0;">${actions}</ol>
+                    <strong>⏱ Est. Downtime:</strong> ${data.estimated_downtime || 'Unknown'}<br>
+                    <button onclick="switchTab('tickets')" style="margin-top:7px;width:100%;padding:5px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🎫 Create Repair Ticket</button>
+                    </div>
+                `;
+            } catch (e) {
+                infoDiv.innerHTML = `<strong>${equipmentName}</strong><br><span style="color:#c0392b;">AI unavailable: ${e.message}</span>`;
+            }
+        }
+
+        // Request browser notification permission (must be triggered by user click)
+        async function enableNotifications() {
+            if (!('Notification' in window)) {
+                alert('Your browser does not support notifications.');
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            const btn = document.getElementById('notif-btn');
+            if (permission === 'granted') {
+                btn.textContent = '🔔 Alerts On';
+                btn.style.background = '#d4edda';
+                btn.style.color = '#155724';
+                btn.onclick = null;
+                showNotification('Faster 99', 'Notifications enabled! You will be alerted on new tickets.');
+            } else {
+                btn.textContent = '🔕 Blocked';
+                btn.style.background = '#f8d7da';
+            }
+        }
+
+        function updateNotifButton() {
+            const btn = document.getElementById('notif-btn');
+            if (!btn) return;
+            if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+            if (Notification.permission === 'granted') {
+                btn.textContent = '🔔 Alerts On';
+                btn.style.background = '#d4edda';
+                btn.style.color = '#155724';
+                btn.onclick = null;
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = '🔕 Blocked';
+                btn.style.background = '#f8d7da';
             }
         }
 
@@ -1099,6 +1288,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         async function submitTicket(event) {
             event.preventDefault();
             if (!requireLogin('submit a ticket')) return;
+            if (!supabaseClient) { alert('Database unavailable. Please refresh and try again.'); return; }
 
             const ticketData = {
                 facility_id: document.getElementById('ticket-facility').value,
@@ -1126,6 +1316,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
 
         // Load tickets from Supabase
         async function loadTickets() {
+            if (!supabaseClient) { renderTickets(); renderTicketChart(); return; }
             const { data, error } = await supabaseClient
                 .from('tickets')
                 .select('*')
@@ -1960,6 +2151,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 ${ticketInfo}
                 ${ticketButton}
                 ${data.status === 'operational' ? '<button class="report-btn" onclick="reportIssue(\'' + data.name + '\')">🔧 Report Issue</button>' : ''}
+                ${data.status !== 'operational' ? '<button style="width:100%;margin-top:6px;padding:6px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;" onclick="aiEquipmentDiagnosisFromCurrent()">🤖 AI Diagnosis</button>' : ''}
             `;
             info.classList.remove('hidden');
         }
