@@ -13,6 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -245,11 +247,24 @@
                     <span class="stat-number" id="stat-employees">-</span>
                     <span class="stat-label">Total Employees</span>
                 </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-tickets">-</span>
+                    <span class="stat-label">Total Tickets</span>
+                </div>
             </div>
 
             <div class="dashboard-section">
                 <h3>📈 Facilities by Type</h3>
-                <div id="type-chart" class="type-chart"></div>
+                <div style="height:200px; position:relative;">
+                    <canvas id="type-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3>🎫 Ticket Status</h3>
+                <div style="height:150px; position:relative;">
+                    <canvas id="ticket-chart"></canvas>
+                </div>
             </div>
 
             <div class="dashboard-section">
@@ -266,7 +281,9 @@
 
             <div class="dashboard-section">
                 <h3>🗺️ Facilities by State</h3>
-                <div id="state-chart" class="type-chart"></div>
+                <div style="height:120px; position:relative;">
+                    <canvas id="state-chart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -582,7 +599,16 @@
         }
         
         // Check auth on page load (don't force login)
-        document.addEventListener('DOMContentLoaded', checkAuth);
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            // Real-time ticket sync
+            supabaseClient
+                .channel('tickets-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+                    loadTickets();
+                })
+                .subscribe();
+        });
 
         // API Configuration - fallback to local data if API unavailable
         const API_URL = 'https://faster99-api-eafbb2bah6hnguc4.eastus2-01.azurewebsites.net';
@@ -1034,7 +1060,9 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
 
             allTickets = data || [];
             renderTickets();
+            renderTicketChart();
         }
+
         
         // Render ticket list
         function renderTickets() {
@@ -1206,9 +1234,11 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             }
         });
 
-        // Render dashboard statistics
+        // Chart instances store
+        const chartInstances = {};
+
+        // Render dashboard statistics with Chart.js
         function renderDashboard(features) {
-            // Total stats
             const totalFacilities = features.length;
             const totalSqft = features.reduce((sum, f) => sum + f.properties.size_sqft, 0);
             const totalEmployees = features.reduce((sum, f) => sum + f.properties.employees, 0);
@@ -1217,35 +1247,35 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             document.getElementById('stat-sqft').textContent = (totalSqft / 1000000).toFixed(2) + 'M';
             document.getElementById('stat-employees').textContent = totalEmployees.toLocaleString();
 
-            // Facilities by type chart
+            // Facilities by type - Donut chart
             const typeCounts = {};
             features.forEach(f => {
                 const type = f.properties.type;
                 typeCounts[type] = (typeCounts[type] || 0) + 1;
             });
+            const typeEntries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
 
-            const chartContainer = document.getElementById('type-chart');
-            chartContainer.innerHTML = Object.entries(typeCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([type, count]) => {
-                    const percentage = (count / totalFacilities * 100).toFixed(0);
-                    const color = typeColors[type] || '#999';
-                    return `
-                        <div class="chart-bar">
-                            <div class="chart-label">${typeLabels[type] || type}</div>
-                            <div class="chart-bar-container">
-                                <div class="chart-bar-fill" style="width: ${percentage}%; background: ${color}"></div>
-                                <span class="chart-value">${count}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+            if (chartInstances.typeChart) chartInstances.typeChart.destroy();
+            chartInstances.typeChart = new Chart(document.getElementById('type-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: typeEntries.map(([t]) => typeLabels[t] || t),
+                    datasets: [{
+                        data: typeEntries.map(([, c]) => c),
+                        backgroundColor: typeEntries.map(([t]) => typeColors[t] || '#999'),
+                        borderWidth: 2,
+                        borderColor: '#1a1a2e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#ccc', font: { size: 10 }, boxWidth: 10, padding: 8 } } }
+                }
+            });
 
             // Top facilities by size
-            const topFacilities = [...features]
-                .sort((a, b) => b.properties.size_sqft - a.properties.size_sqft)
-                .slice(0, 5);
-
+            const topFacilities = [...features].sort((a, b) => b.properties.size_sqft - a.properties.size_sqft).slice(0, 5);
             document.getElementById('top-facilities').innerHTML = topFacilities.map((f, i) => {
                 const p = f.properties;
                 const color = typeColors[p.type] || '#999';
@@ -1261,40 +1291,75 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 `;
             }).join('');
 
-            // Facilities by state
+            // Geographic coverage info
             const stateCounts = {};
             features.forEach(f => {
-                const address = f.properties.address;
-                const state = address.split(',').pop().trim();
+                const state = f.properties.address.split(',').pop().trim();
                 stateCounts[state] = (stateCounts[state] || 0) + 1;
             });
-
-            const stateColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6'];
-            const stateChartContainer = document.getElementById('state-chart');
-            stateChartContainer.innerHTML = Object.entries(stateCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 10)
-                .map(([state, count], index) => {
-                    const percentage = (count / totalFacilities * 100).toFixed(0);
-                    const color = stateColors[index % stateColors.length];
-                    return `
-                        <div class="chart-bar">
-                            <div class="chart-label">${state}</div>
-                            <div class="chart-bar-container">
-                                <div class="chart-bar-fill" style="width: ${percentage}%; background: ${color}"></div>
-                                <span class="chart-value">${count}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-            // Geographic coverage info
             const uniqueStates = Object.keys(stateCounts).length;
             document.getElementById('coverage-info').innerHTML = `
                 <p><strong>${uniqueStates}</strong> states covered across the US</p>
                 <p><strong>${totalFacilities}</strong> facilities nationwide</p>
                 <p>Average <strong>${Math.round(totalEmployees / uniqueStates)}</strong> employees per state</p>
             `;
+
+            // Facilities by state - Bar chart
+            const sortedStates = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            if (chartInstances.stateChart) chartInstances.stateChart.destroy();
+            chartInstances.stateChart = new Chart(document.getElementById('state-chart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedStates.map(([s]) => s),
+                    datasets: [{
+                        label: 'Facilities',
+                        data: sortedStates.map(([, c]) => c),
+                        backgroundColor: '#e74c3c',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#ccc', font: { size: 10 } }, grid: { color: '#2a2a3e' } },
+                        y: { ticks: { color: '#ccc', stepSize: 1 }, grid: { color: '#2a2a3e' } }
+                    }
+                }
+            });
+        }
+
+        // Render ticket status donut chart
+        function renderTicketChart() {
+            const statusCounts = { open: 0, in_progress: 0, resolved: 0 };
+            allTickets.forEach(t => {
+                if (statusCounts[t.status] !== undefined) statusCounts[t.status]++;
+            });
+
+            const el = document.getElementById('stat-tickets');
+            if (el) el.textContent = allTickets.length;
+
+            const canvas = document.getElementById('ticket-chart');
+            if (!canvas) return;
+            if (chartInstances.ticketChart) chartInstances.ticketChart.destroy();
+            chartInstances.ticketChart = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Open', 'In Progress', 'Resolved'],
+                    datasets: [{
+                        data: [statusCounts.open, statusCounts.in_progress, statusCounts.resolved],
+                        backgroundColor: ['#e74c3c', '#f39c12', '#2ecc71'],
+                        borderWidth: 2,
+                        borderColor: '#1a1a2e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#ccc', font: { size: 10 }, boxWidth: 10, padding: 8 } } }
+                }
+            });
         }
 
         // Render facility list in sidebar
