@@ -1,6 +1,6 @@
 # Faster 99 - Facility Management Mapping Tool
 
-An interactive facility management mapping tool built with Mapbox GL JS and Three.js, demonstrating full-stack development with Azure cloud deployment.
+An AI-powered facility management tool built with Mapbox GL JS, Three.js, and OpenAI — demonstrating full-stack development with Azure cloud deployment.
 
 ## Live Demo
 
@@ -14,26 +14,32 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 
 ## Features
 
+### 🤖 AI-Powered Features (OpenAI GPT-4o)
+- **Smart Ticket Auto-Fill** — describe a problem in plain English, AI suggests category, priority, title, and step-by-step repair instructions
+- **Operations Summary** — one-click AI summary of current facility and ticket status for daily briefings
+- **Equipment Fault Diagnosis** — click any faulty 3D equipment, AI identifies likely causes, immediate actions, and estimated downtime
+
 ### 🗺️ Interactive Mapping
 - Interactive map with 100 facility locations across the US
 - Search and filter by facility type
 - Click-to-zoom facility navigation
 
-### 🏢 3D Facility Visualization  
+### 🏢 3D Facility Visualization
 - Three.js powered 3D floor plans
-- Interactive equipment inspection
-- Real-time equipment status display
+- Interactive equipment inspection with status indicators
+- Real-time equipment status display (Operational / Maintenance / Fault)
 - One-click issue reporting from 3D view
 
 ### 🎫 Work Order Management
 - Create and track maintenance tickets
 - Status workflow: Open → In Progress → Resolved
-- Filter tickets by status
+- Filter and search tickets by status, title, facility, category
 - Direct navigation from ticket to facility on map
 
 ### 📊 Dashboard & Analytics
-- Facility statistics overview
-- Equipment inventory tracking
+- Facility statistics overview (total facilities, sqft, employees, tickets)
+- Chart.js donut and bar charts (facility types, ticket status, top states)
+- Equipment inventory tracking across all facilities
 - Maintenance calendar with scheduled tasks
 - Data import/export (CSV)
 
@@ -47,12 +53,8 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 - One-click toggle between dark and light theme
 - Preference saved automatically (persists after refresh)
 
-### 🔍 Ticket Search
-- Real-time search across ticket title, facility, category and description
-- Works together with status filters (Open / In Progress / Resolved)
-
 ### 🔔 Browser Notifications
-- Prompts for notification permission on first visit
+- Enable alerts with one click
 - Desktop notification when a ticket is created
 - Notifies when another user creates a ticket (via real-time sync)
 
@@ -63,64 +65,31 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 - Role-based access (Administrator, Manager, Technician, Viewer)
 
 ### 🔧 Technical Features
-- RESTful API backend
+- RESTful API backend with AI endpoints
 - Full-stack Azure + Supabase deployment
 - CI/CD with GitHub Actions
 
 ## Tech Stack
 
-- **Frontend**: HTML, CSS, JavaScript, Mapbox GL JS, Three.js
-- **Backend**: Python, Flask, Gunicorn
-- **Database**: Supabase (PostgreSQL) — authentication, real-time sync & ticket storage
-- **Charts**: Chart.js — donut and bar charts
-- **Cloud**: Azure Static Web Apps, Azure App Service
-- **CI/CD**: GitHub Actions
-- **Data**: GeoJSON
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | HTML5, CSS3, JavaScript |
+| **Mapping** | Mapbox GL JS, GeoJSON |
+| **3D Graphics** | Three.js, OrbitControls |
+| **AI** | OpenAI GPT-4o-mini (ticket suggestions, diagnosis, summaries) |
+| **Charts** | Chart.js (donut & bar charts) |
+| **Backend** | Python, Flask, Gunicorn |
+| **Database** | Supabase (PostgreSQL, Auth, Realtime) |
+| **Cloud** | Azure Static Web Apps, Azure App Service |
+| **CI/CD** | GitHub Actions |
 
-## Local Development
+## AI Endpoints
 
-### Prerequisites
-
-- Python 3.11+
-- A Mapbox account (free tier available)
-
-### Setup
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/rhulucas/dhl-fm-mapping-tool.git
-   cd dhl-fm-mapping-tool
-   ```
-
-2. Get a Mapbox token from https://mapbox.com and replace it in `index.html`:
-   ```javascript
-   mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN';
-   ```
-
-3. For local development, modify `index.html` to use local data:
-   ```javascript
-   // Change this line:
-   fetch(API_URL + '/api/facilities')
-   // To:
-   fetch('./data.json')
-   ```
-
-4. Start a local server:
-   ```bash
-   python3 -m http.server 8080
-   ```
-
-5. Open http://localhost:8080
-
-### Running the API locally
-
-```bash
-cd api
-pip install -r requirements.txt
-python app.py
-```
-
-API will be available at http://localhost:5000
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ai/ticket-suggest` | Auto-fill ticket from description |
+| POST | `/api/ai/dashboard-summary` | Generate operations summary |
+| POST | `/api/ai/equipment-diagnosis` | Diagnose equipment fault |
 
 ## API Endpoints
 
@@ -135,11 +104,48 @@ API will be available at http://localhost:5000
 | PUT | `/api/facilities/<id>` | Update facility |
 | DELETE | `/api/facilities/<id>` | Delete facility |
 
+## Local Development
+
+### Prerequisites
+
+- Python 3.11+
+- A Mapbox account (free tier available)
+- An OpenAI API key (for AI features)
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/rhulucas/dhl-fm-mapping-tool.git
+   cd dhl-fm-mapping-tool
+   ```
+
+2. Install API dependencies:
+   ```bash
+   cd api
+   pip install -r requirements.txt
+   ```
+
+3. Start the API with your OpenAI key:
+   ```bash
+   OPENAI_API_KEY=your_key_here python app.py
+   ```
+   API will be available at http://localhost:5000
+
+4. In a separate terminal, start the frontend:
+   ```bash
+   python3 -m http.server 8080
+   ```
+
+5. Open http://localhost:8080
+
+> **Note:** The OpenAI API key is never stored in any file. It is passed as an environment variable only. For Azure deployment, set `OPENAI_API_KEY` under App Service → Environment Variables.
+
 ## Project Structure
 
 ```
 ├── api/                    # Backend API
-│   ├── app.py              # Flask application
+│   ├── app.py              # Flask application (facilities + AI endpoints)
 │   ├── data.json           # Facility data
 │   └── requirements.txt    # Python dependencies
 ├── .github/workflows/      # CI/CD pipelines
@@ -151,6 +157,7 @@ API will be available at http://localhost:5000
 
 ## Skills Demonstrated
 
+- **AI Integration**: OpenAI GPT-4o API, prompt engineering, structured JSON responses
 - **Frontend Development**: JavaScript, HTML5, CSS3, responsive design
 - **3D Graphics**: Three.js scene creation, interactive objects, raycasting
 - **Mapping**: Mapbox GL JS, GeoJSON data handling, custom markers
