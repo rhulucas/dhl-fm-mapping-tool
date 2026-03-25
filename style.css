@@ -1830,6 +1830,94 @@ body {
 }
 
 /* =============================================
+   DARK MODE
+   ============================================= */
+.theme-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    margin-left: auto;
+}
+.theme-btn:hover { background: rgba(0,0,0,0.1); }
+
+body.dark-mode #sidebar {
+    background: #1a1a2e;
+    color: #e0e0e0;
+}
+body.dark-mode .header { border-bottom-color: #fc0; }
+body.dark-mode .logo { color: #ff4444; }
+body.dark-mode .tagline { color: #999; }
+body.dark-mode .nav-tabs { background: #16213e; }
+body.dark-mode .nav-tab { color: #aaa; }
+body.dark-mode .nav-tab:hover { background: #0f3460; }
+body.dark-mode .nav-tab.active { background: #d40511; color: white; }
+body.dark-mode #search-input {
+    background: #16213e;
+    border-color: #333;
+    color: #e0e0e0;
+}
+body.dark-mode #ticket-search {
+    background: #16213e;
+    border-color: #333;
+    color: #e0e0e0;
+}
+body.dark-mode .filter-btn {
+    background: #16213e;
+    color: #ccc;
+    border-color: #333;
+}
+body.dark-mode .filter-btn.active { background: #d40511; color: white; }
+body.dark-mode .facility-card {
+    background: #16213e;
+    border-color: #333;
+    color: #e0e0e0;
+}
+body.dark-mode .facility-card:hover { background: #0f3460; }
+body.dark-mode .ticket-card {
+    background: #16213e;
+    border-color: #333;
+    color: #e0e0e0;
+}
+body.dark-mode .stat-card {
+    background: linear-gradient(135deg, #16213e, #0f3460);
+    color: #e0e0e0;
+}
+body.dark-mode .dashboard-section { border-color: #333; }
+body.dark-mode .dashboard-section h3 { color: #e0e0e0; }
+body.dark-mode .resource-card {
+    background: #16213e;
+    color: #e0e0e0;
+}
+body.dark-mode .tab-title { color: #e0e0e0; }
+body.dark-mode .tab-description { color: #999; }
+body.dark-mode .login-box { background: #1a1a2e; color: #e0e0e0; }
+body.dark-mode .login-box label { color: #ccc; }
+body.dark-mode .login-box input,
+body.dark-mode .login-box select {
+    background: #16213e;
+    border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .top-facility-item {
+    background: #16213e;
+    color: #e0e0e0;
+}
+body.dark-mode .ticket-filters .ticket-filter {
+    background: #16213e;
+    color: #ccc;
+    border-color: #333;
+}
+body.dark-mode .upload-section {
+    background: #16213e;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+/* =============================================
    MOBILE RESPONSIVE (≤768px)
    ============================================= */
 @media (max-width: 768px) {
