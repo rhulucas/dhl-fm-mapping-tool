@@ -43,6 +43,19 @@ An interactive facility management mapping tool built with Mapbox GL JS and Thre
 - Scrollable tabs and touch-friendly buttons
 - Tested on iPhone 11
 
+### 🌙 Dark / Light Mode
+- One-click toggle between dark and light theme
+- Preference saved automatically (persists after refresh)
+
+### 🔍 Ticket Search
+- Real-time search across ticket title, facility, category and description
+- Works together with status filters (Open / In Progress / Resolved)
+
+### 🔔 Browser Notifications
+- Prompts for notification permission on first visit
+- Desktop notification when a ticket is created
+- Notifies when another user creates a ticket (via real-time sync)
+
 ### 🔐 Authentication & Database
 - Real user authentication via Supabase Auth (email/password)
 - Persistent ticket storage in Supabase PostgreSQL database
@@ -143,7 +156,8 @@ API will be available at http://localhost:5000
 - **Mapping**: Mapbox GL JS, GeoJSON data handling, custom markers
 - **Backend Development**: Python Flask, RESTful API design
 - **Cloud Deployment**: Azure Static Web Apps, Azure App Service
-- **Database Integration**: Supabase Auth, PostgreSQL, Row Level Security
+- **Database Integration**: Supabase Auth, PostgreSQL, real-time subscriptions
+- **Notifications**: Browser Notification API for real-time ticket alerts
 - **DevOps**: CI/CD with GitHub Actions, automated deployments
 - **UX Design**: Intuitive navigation, status workflows, data visualization
 
