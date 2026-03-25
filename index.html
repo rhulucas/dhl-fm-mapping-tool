@@ -655,10 +655,21 @@
             // Real-time ticket sync
             supabaseClient
                 .channel('tickets-realtime')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tickets' }, (payload) => {
+                    loadTickets();
+                    const t = payload.new;
+                    if (t && t.user_email !== (currentUser?.email)) {
+                        showNotification('New Ticket from ' + (t.user_email || 'someone'), `${t.title} — ${t.facility_id}`);
+                    }
+                })
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
+                    loadTickets();
+                })
+                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tickets' }, () => {
                     loadTickets();
                 })
                 .subscribe();
+            requestNotificationPermission();
         });
 
         // API Configuration - fallback to local data if API unavailable
@@ -1071,6 +1082,20 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         }
         
         // Submit new ticket
+        // Request browser notification permission
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        // Show browser notification
+        function showNotification(title, body, icon = '🎫') {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '/favicon.ico' });
+            }
+        }
+
         async function submitTicket(event) {
             event.preventDefault();
             if (!requireLogin('submit a ticket')) return;
@@ -1092,7 +1117,9 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 return;
             }
 
-            alert('Ticket created: TKT-' + data.id.substring(0, 8).toUpperCase());
+            const ticketId = 'TKT-' + data.id.substring(0, 8).toUpperCase();
+            showNotification('New Ticket Created', `${ticketId}: ${data.title} (${data.facility_id})`);
+            alert('Ticket created: ' + ticketId);
             document.getElementById('ticket-form').reset();
             loadTickets();
         }
