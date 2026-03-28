@@ -2063,6 +2063,8 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             ];
             
             // Update equipment status based on tickets for this facility only
+            console.log('[3D] facilityId:', facilityId, '| allTickets count:', allTickets.length);
+            console.log('[3D] tickets for this facility:', allTickets.filter(t => t.facility_id === facilityId));
             allTickets.forEach(ticket => {
                 if (ticket.facility_id !== facilityId) return;
 
