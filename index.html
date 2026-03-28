@@ -1910,7 +1910,6 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                             <span class="legend-item"><span class="status-dot yellow"></span> Maint</span>
                             <span class="legend-item"><span class="status-dot red"></span> Fault</span>
                         </div>
-                        <div id="debug-info" style="position:absolute;bottom:40px;right:10px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;max-width:260px;word-break:break-all;"></div>
                     </div>
                 </div>
             `;
@@ -2064,9 +2063,6 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             ];
             
             // Update equipment status based on tickets for this facility only
-            const facilityTickets = allTickets.filter(t => t.facility_id === facilityId);
-            const dbg = document.getElementById('debug-info');
-            if (dbg) dbg.innerHTML = `Tickets: ${allTickets.length} | Facility: ${facilityTickets.length}<br>${facilityTickets.map(t => `${t.category}/${t.status}`).join(', ')}`;
             allTickets.forEach(ticket => {
                 if (ticket.facility_id !== facilityId) return;
 
@@ -2102,9 +2098,6 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 maintenance: 0xf1c40f,
                 fault: 0xe74c3c
             };
-
-            // Show each equipment's resolved status in debug panel
-            if (dbg) dbg.innerHTML += '<br>' + equipment.map(e => `${e.type}:${e.status}`).join(' | ');
 
             equipment.forEach(eq => {
                 const geometry = new THREE.SphereGeometry(0.8, 16, 16);
