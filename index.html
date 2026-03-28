@@ -1914,9 +1914,12 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 </div>
             `;
             document.body.appendChild(modal);
-            
-            // Initialize 3D scene
-            setTimeout(() => init3DScene(facilityId), 100);
+
+            // Ensure tickets are loaded before initializing 3D scene
+            setTimeout(async () => {
+                await loadTickets();
+                init3DScene(facilityId);
+            }, 100);
         }
         
         let scene, camera, renderer, controls;
