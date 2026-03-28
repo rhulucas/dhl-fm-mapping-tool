@@ -409,7 +409,7 @@
                     </div>
                     <div class="form-group">
                         <label>Category</label>
-                        <select id="ticket-category" required>
+                        <select id="ticket-category" required onchange="autoFillTitle(this.value)">
                             <option value="">Select category...</option>
                             <option value="hvac">HVAC Issue</option>
                             <option value="electrical">Electrical</option>
@@ -1093,6 +1093,21 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         let allTickets = [];
         let currentTicketFilter = 'all';
         
+        // Auto-fill title based on selected category
+        function autoFillTitle(category) {
+            const titleInput = document.getElementById('ticket-title');
+            if (!titleInput || titleInput.value) return; // don't overwrite if already typed
+            const defaults = {
+                'hvac':       'HVAC Issue Reported',
+                'electrical': 'Electrical Issue Reported',
+                'plumbing':   'Plumbing Issue Reported',
+                'security':   'Security Issue Reported',
+                'equipment':  'Equipment Malfunction Reported',
+                'other':      'Maintenance Request'
+            };
+            if (defaults[category]) titleInput.value = defaults[category];
+        }
+
         // Populate facility dropdown for tickets
         function populateFacilityDropdown() {
             if (!facilitiesData) return;
@@ -1952,7 +1967,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             buildWarehouse();
             
             // Add equipment
-            addEquipment();
+            addEquipment(facilityId);
             
             // Animation loop
             animate();
@@ -2030,7 +2045,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             addLabel('Storage Racks', 3, 6, -2);
         }
         
-        function addEquipment() {
+        function addEquipment(facilityId) {
             // Base equipment list - all start as operational
             const equipment = [
                 { name: 'HVAC Unit 1', type: 'hvac', x: -18, y: 3, z: 5, status: 'operational' },
