@@ -2066,7 +2066,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             // Update equipment status based on tickets for this facility only
             const facilityTickets = allTickets.filter(t => t.facility_id === facilityId);
             const dbg = document.getElementById('debug-info');
-            if (dbg) dbg.innerHTML = `Total tickets: ${allTickets.length}<br>This facility: ${facilityTickets.length}<br>${facilityTickets.map(t => `${t.category}/${t.status}`).join(', ')}`;
+            if (dbg) dbg.innerHTML = `Tickets: ${allTickets.length} | Facility: ${facilityTickets.length}<br>${facilityTickets.map(t => `${t.category}/${t.status}`).join(', ')}`;
             allTickets.forEach(ticket => {
                 if (ticket.facility_id !== facilityId) return;
 
@@ -2102,7 +2102,10 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 maintenance: 0xf1c40f,
                 fault: 0xe74c3c
             };
-            
+
+            // Show each equipment's resolved status in debug panel
+            if (dbg) dbg.innerHTML += '<br>' + equipment.map(e => `${e.type}:${e.status}`).join(' | ');
+
             equipment.forEach(eq => {
                 const geometry = new THREE.SphereGeometry(0.8, 16, 16);
                 const material = new THREE.MeshLambertMaterial({ 
