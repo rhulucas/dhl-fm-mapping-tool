@@ -2037,37 +2037,37 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 { name: 'HVAC Unit 2', type: 'hvac', x: 18, y: 3, z: -5, status: 'operational' },
                 { name: 'Conveyor System', type: 'conveyor', x: 5, y: 1, z: 8, status: 'operational' },
                 { name: 'Fire Suppression', type: 'fire', x: 0, y: 6, z: 0, status: 'operational' },
+                { name: 'Plumbing System', type: 'plumbing', x: 10, y: 1, z: -12, status: 'operational' },
                 { name: 'Electrical Panel', type: 'electrical', x: -18, y: 2, z: -10, status: 'operational' },
                 { name: 'Forklift Charger', type: 'charger', x: 15, y: 0.5, z: -10, status: 'operational' },
                 { name: 'Security Camera', type: 'security', x: -19, y: 7, z: 14, status: 'operational' },
                 { name: 'IT Server Rack', type: 'it', x: -12, y: 2, z: -13, status: 'operational' }
             ];
             
-            // Update equipment status based on tickets
+            // Update equipment status based on tickets for this facility only
             allTickets.forEach(ticket => {
+                if (ticket.facility_id !== facilityId) return;
+
                 const category = ticket.category;
                 const ticketStatus = ticket.status;
-                
+
                 // Map ticket categories to equipment types
                 const categoryToType = {
                     'hvac': 'hvac',
                     'electrical': 'electrical',
-                    'plumbing': 'fire',
+                    'plumbing': 'plumbing',
                     'security': 'security',
                     'equipment': 'conveyor',
                     'other': 'it'
                 };
-                
+
                 const equipType = categoryToType[category];
                 if (equipType) {
                     // Find matching equipment and update status
                     equipment.forEach(eq => {
                         if (eq.type === equipType) {
-                            if (ticketStatus === 'open') {
+                            if (ticketStatus === 'open' || ticketStatus === 'in_progress') {
                                 eq.status = 'fault';
-                                eq.ticketId = ticket.id;
-                            } else if (ticketStatus === 'in_progress') {
-                                eq.status = 'maintenance';
                                 eq.ticketId = ticket.id;
                             }
                         }
