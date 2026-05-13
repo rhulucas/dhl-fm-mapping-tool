@@ -9,12 +9,69 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 import os
+import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
 
 # Load facility data
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'data.json')
+
+# =============================================================================
+# POSTGRESQL DATABASE
+# =============================================================================
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.environ.get('DB_HOST', 'rohu-db.postgres.database.azure.com'),
+        database=os.environ.get('DB_NAME', 'faster99_fm_db'),
+        user=os.environ.get('DB_USER', 'rohuadmin'),
+        password=os.environ.get('DB_PASSWORD', ''),
+        port=int(os.environ.get('DB_PORT', 5432)),
+        sslmode='require'
+    )
+
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS tickets (
+            id SERIAL PRIMARY KEY,
+            facility_id VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT DEFAULT '',
+            category VARCHAR(50) NOT NULL,
+            priority VARCHAR(20) DEFAULT 'medium',
+            status VARCHAR(20) DEFAULT 'open',
+            user_email VARCHAR(255),
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
+try:
+    init_db()
+except Exception as e:
+    print(f"DB init warning: {e}")
+
+def format_ticket(row):
+    return {
+        "id": f"TKT-{row['id']:04d}",
+        "db_id": row['id'],
+        "facility_id": row['facility_id'],
+        "title": row['title'],
+        "description": row['description'] or '',
+        "category": row['category'],
+        "priority": row['priority'],
+        "status": row['status'],
+        "user_email": row.get('user_email', ''),
+        "created_at": row['created_at'].isoformat() if row['created_at'] else None,
+        "updated_at": row['updated_at'].isoformat() if row['updated_at'] else None
+    }
 
 def load_data():
     """Load facility data from JSON file."""
@@ -456,111 +513,137 @@ def export_contacts():
 # TICKET SYSTEM ENDPOINTS
 # =============================================================================
 
-# In-memory ticket storage (in production, use a database)
-tickets = []
-ticket_counter = 1
-
 @app.route('/api/tickets', methods=['GET'])
 def get_tickets():
     """Get all tickets with optional filtering."""
     facility_id = request.args.get('facility_id')
     status = request.args.get('status')
-    
-    result = tickets.copy()
-    
-    if facility_id:
-        result = [t for t in result if t['facility_id'] == facility_id]
-    if status:
-        result = [t for t in result if t['status'] == status]
-    
-    return jsonify({
-        "count": len(result),
-        "tickets": result
-    })
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        query = "SELECT * FROM tickets WHERE 1=1"
+        params = []
+        if facility_id:
+            query += " AND facility_id = %s"
+            params.append(facility_id)
+        if status:
+            query += " AND status = %s"
+            params.append(status)
+        query += " ORDER BY created_at DESC"
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        result = [format_ticket(r) for r in rows]
+        return jsonify({"count": len(result), "tickets": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/tickets', methods=['POST'])
 def create_ticket():
     """Create a new maintenance ticket."""
-    global ticket_counter
-    
     if not request.json:
         return jsonify({"error": "JSON data required"}), 400
-    
+
     required = ['facility_id', 'title', 'category']
     missing = [f for f in required if f not in request.json]
     if missing:
         return jsonify({"error": f"Missing required fields: {missing}"}), 400
-    
-    from datetime import datetime
-    
-    ticket = {
-        "id": f"TKT-{ticket_counter:04d}",
-        "facility_id": request.json['facility_id'],
-        "title": request.json['title'],
-        "description": request.json.get('description', ''),
-        "category": request.json['category'],
-        "priority": request.json.get('priority', 'medium'),
-        "status": "open",
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    }
-    
-    tickets.append(ticket)
-    ticket_counter += 1
-    
-    return jsonify({
-        "message": "Ticket created successfully",
-        "ticket": ticket
-    }), 201
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            '''INSERT INTO tickets (facility_id, title, description, category, priority, status, user_email)
+               VALUES (%s, %s, %s, %s, %s, 'open', %s) RETURNING *''',
+            (
+                request.json['facility_id'],
+                request.json['title'],
+                request.json.get('description', ''),
+                request.json['category'],
+                request.json.get('priority', 'medium'),
+                request.json.get('user_email', '')
+            )
+        )
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        ticket = format_ticket(row)
+        return jsonify({"message": "Ticket created successfully", "ticket": ticket}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/tickets/<ticket_id>', methods=['GET'])
 def get_ticket(ticket_id):
     """Get a single ticket by ID."""
-    for ticket in tickets:
-        if ticket['id'] == ticket_id:
-            return jsonify(ticket)
-    return jsonify({"error": "Ticket not found"}), 404
+    try:
+        db_id = int(ticket_id.split('-')[1])
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM tickets WHERE id = %s", (db_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Ticket not found"}), 404
+        return jsonify(format_ticket(row))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/tickets/<ticket_id>', methods=['PUT'])
 def update_ticket(ticket_id):
     """Update a ticket status or details."""
-    from datetime import datetime
-    
-    for ticket in tickets:
-        if ticket['id'] == ticket_id:
-            if request.json.get('status'):
-                ticket['status'] = request.json['status']
-            if request.json.get('priority'):
-                ticket['priority'] = request.json['priority']
-            if request.json.get('description'):
-                ticket['description'] = request.json['description']
-            ticket['updated_at'] = datetime.now().isoformat()
-            
-            return jsonify({
-                "message": "Ticket updated",
-                "ticket": ticket
-            })
-    
-    return jsonify({"error": "Ticket not found"}), 404
+    try:
+        db_id = int(ticket_id.split('-')[1])
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        updates = []
+        params = []
+        if request.json.get('status'):
+            updates.append("status = %s")
+            params.append(request.json['status'])
+        if request.json.get('priority'):
+            updates.append("priority = %s")
+            params.append(request.json['priority'])
+        if request.json.get('description'):
+            updates.append("description = %s")
+            params.append(request.json['description'])
+        updates.append("updated_at = NOW()")
+        params.append(db_id)
+        cur.execute(f"UPDATE tickets SET {', '.join(updates)} WHERE id = %s RETURNING *", params)
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Ticket not found"}), 404
+        return jsonify({"message": "Ticket updated", "ticket": format_ticket(row)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/tickets/<ticket_id>', methods=['DELETE'])
 def delete_ticket(ticket_id):
     """Delete a ticket by ID."""
-    global tickets
-    
-    for i, ticket in enumerate(tickets):
-        if ticket['id'] == ticket_id:
-            deleted_ticket = tickets.pop(i)
-            return jsonify({
-                "message": "Ticket deleted",
-                "ticket": deleted_ticket
-            })
-    
-    return jsonify({"error": "Ticket not found"}), 404
+    try:
+        db_id = int(ticket_id.split('-')[1])
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("DELETE FROM tickets WHERE id = %s RETURNING *", (db_id,))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Ticket not found"}), 404
+        return jsonify({"message": "Ticket deleted", "ticket": format_ticket(row)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # =============================================================================
@@ -703,23 +786,22 @@ Return only valid JSON, no extra text."""
 @app.route('/api/tickets/stats', methods=['GET'])
 def ticket_stats():
     """Get ticket statistics."""
-    stats = {
-        "total": len(tickets),
-        "by_status": {},
-        "by_priority": {},
-        "by_category": {}
-    }
-    
-    for t in tickets:
-        status = t.get('status', 'unknown')
-        priority = t.get('priority', 'unknown')
-        category = t.get('category', 'unknown')
-        
-        stats['by_status'][status] = stats['by_status'].get(status, 0) + 1
-        stats['by_priority'][priority] = stats['by_priority'].get(priority, 0) + 1
-        stats['by_category'][category] = stats['by_category'].get(category, 0) + 1
-    
-    return jsonify(stats)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT COUNT(*) as total FROM tickets")
+        total = cur.fetchone()['total']
+        cur.execute("SELECT status, COUNT(*) as count FROM tickets GROUP BY status")
+        by_status = {r['status']: r['count'] for r in cur.fetchall()}
+        cur.execute("SELECT priority, COUNT(*) as count FROM tickets GROUP BY priority")
+        by_priority = {r['priority']: r['count'] for r in cur.fetchall()}
+        cur.execute("SELECT category, COUNT(*) as count FROM tickets GROUP BY category")
+        by_category = {r['category']: r['count'] for r in cur.fetchall()}
+        cur.close()
+        conn.close()
+        return jsonify({"total": total, "by_status": by_status, "by_priority": by_priority, "by_category": by_category})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # =============================================================================

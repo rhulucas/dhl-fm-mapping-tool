@@ -11,8 +11,6 @@
     <!-- Three.js for 3D BIM visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -541,28 +539,13 @@
         // USER AUTHENTICATION
         // =============================================
         
-        // Supabase initialization
-        const SUPABASE_URL = 'https://fhivvonsjeqbrupnxpki.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_y_hICxYBRf-PWpsxPDcFvA_OX5foVNG';
-        let supabaseClient = null;
-        try {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) {
-            console.warn('Supabase failed to initialize:', e.message);
-        }
-
         let currentUser = null;
 
-        // Check if user is logged in via Supabase session
-        async function checkAuth() {
-            if (!supabaseClient) return;
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = {
-                    email: session.user.email,
-                    role: localStorage.getItem('fm_role') || 'viewer',
-                    loginTime: session.user.last_sign_in_at
-                };
+        // Check if user is logged in via localStorage session
+        function checkAuth() {
+            const saved = localStorage.getItem('fm_user');
+            if (saved) {
+                currentUser = JSON.parse(saved);
                 updateUserUI();
             }
         }
@@ -601,51 +584,12 @@
         
         async function handleLogin(event) {
             event.preventDefault();
-
             const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
             const role = document.getElementById('login-role').value;
-            const btn = document.querySelector('.login-btn');
-            btn.textContent = 'Signing in...';
-            btn.disabled = true;
-
-            if (!supabaseClient) {
-                // Offline mode: accept any login
-                currentUser = { email, role, loginTime: new Date().toISOString() };
-                localStorage.setItem('fm_role', role);
-                btn.textContent = '🔐 Sign In';
-                btn.disabled = false;
-                hideLoginModal();
-                updateUserUI();
-                return;
-            }
-
-            // Try sign in first, auto-register if new user
-            let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-            if (error) {
-                const signUp = await supabaseClient.auth.signUp({ email, password });
-                if (signUp.error) {
-                    alert('Login failed: ' + signUp.error.message);
-                    btn.textContent = '🔐 Sign In';
-                    btn.disabled = false;
-                    return;
-                }
-                data = signUp.data;
-            }
-
-            currentUser = {
-                email: data.user.email,
-                role: role,
-                loginTime: new Date().toISOString()
-            };
-
-            localStorage.setItem('fm_role', role);
-            btn.textContent = '🔐 Sign In';
-            btn.disabled = false;
+            currentUser = { email, role, loginTime: new Date().toISOString() };
+            localStorage.setItem('fm_user', JSON.stringify(currentUser));
             hideLoginModal();
             updateUserUI();
-
             if (pendingIssue) {
                 const issue = pendingIssue;
                 pendingIssue = null;
@@ -668,9 +612,8 @@
             }
         }
 
-        async function handleLogout() {
-            if (supabaseClient) await supabaseClient.auth.signOut();
-            localStorage.removeItem('fm_role');
+        function handleLogout() {
+            localStorage.removeItem('fm_user');
             currentUser = null;
             updateUserUI();
         }
@@ -679,30 +622,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             initTheme();
-            // Real-time ticket sync
-            if (supabaseClient) {
-                supabaseClient
-                    .channel('tickets-realtime')
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tickets' }, (payload) => {
-                        loadTickets();
-                        const t = payload.new;
-                        if (t && t.user_email !== (currentUser?.email)) {
-                            showNotification('New Ticket from ' + (t.user_email || 'someone'), `${t.title} — ${t.facility_id}`);
-                        }
-                    })
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tickets' }, () => {
-                        loadTickets();
-                    })
-                    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tickets' }, () => {
-                        loadTickets();
-                    })
-                    .subscribe();
-            }
             updateNotifButton();
         });
 
         // API Configuration - fallback to local data if API unavailable
-        const API_URL = 'https://faster99-api-eafbb2bah6hnguc4.eastus2-01.azurewebsites.net';
+        const API_URL = 'https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net';
         let useLocalStorage = false; // Will be set to true if API fails
 
         map.on('load', () => {
@@ -1303,7 +1227,6 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         async function submitTicket(event) {
             event.preventDefault();
             if (!requireLogin('submit a ticket')) return;
-            if (!supabaseClient) { alert('Database unavailable. Please refresh and try again.'); return; }
 
             const ticketData = {
                 facility_id: document.getElementById('ticket-facility').value,
@@ -1311,38 +1234,36 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 priority: document.getElementById('ticket-priority').value,
                 title: document.getElementById('ticket-title').value,
                 description: document.getElementById('ticket-description').value,
-                status: 'open',
                 user_email: currentUser ? currentUser.email : 'anonymous'
             };
 
-            const { data, error } = await supabaseClient.from('tickets').insert([ticketData]).select().single();
-
-            if (error) {
-                alert('Error creating ticket: ' + error.message);
-                return;
+            try {
+                const res = await fetch(API_URL + '/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ticketData)
+                });
+                const data = await res.json();
+                if (!res.ok) { alert('Error: ' + (data.error || 'Unknown error')); return; }
+                showNotification('New Ticket Created', `${data.ticket.id}: ${data.ticket.title}`);
+                alert('Ticket created: ' + data.ticket.id);
+                document.getElementById('ticket-form').reset();
+                loadTickets();
+            } catch(e) {
+                alert('Network error: ' + e.message);
             }
-
-            const ticketId = 'TKT-' + data.id.substring(0, 8).toUpperCase();
-            showNotification('New Ticket Created', `${ticketId}: ${data.title} (${data.facility_id})`);
-            alert('Ticket created: ' + ticketId);
-            document.getElementById('ticket-form').reset();
-            loadTickets();
         }
 
-        // Load tickets from Supabase
+        // Load tickets from API
         async function loadTickets() {
-            if (!supabaseClient) { renderTickets(); renderTicketChart(); return; }
-            const { data, error } = await supabaseClient
-                .from('tickets')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Failed to load tickets:', error);
-                return;
+            try {
+                const res = await fetch(API_URL + '/api/tickets');
+                const data = await res.json();
+                allTickets = data.tickets || [];
+            } catch(e) {
+                console.error('Failed to load tickets:', e);
+                allTickets = [];
             }
-
-            allTickets = data || [];
             renderTickets();
             renderTicketChart();
         }
@@ -1376,7 +1297,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             list.innerHTML = filtered.map(t => `
                 <div class="ticket-card ${t.priority}">
                     <div class="ticket-header">
-                        <span class="ticket-id">TKT-${t.id.substring(0,8).toUpperCase()}</span>
+                        <span class="ticket-id">${t.id}</span>
                         <span class="ticket-status ${t.status}">${t.status.replace('_', ' ')}</span>
                     </div>
                     <h4 class="ticket-title">${t.title}</h4>
@@ -1418,29 +1339,25 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
 
         // Update ticket status
         async function updateTicketStatus(ticketId, newStatus) {
-            const { error } = await supabaseClient
-                .from('tickets')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', ticketId);
-
-            if (error) {
-                alert('Error: ' + error.message);
-                return;
-            }
-            loadTickets();
+            try {
+                const res = await fetch(API_URL + '/api/tickets/' + ticketId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (!res.ok) { const d = await res.json(); alert('Error: ' + d.error); return; }
+                loadTickets();
+            } catch(e) { alert('Network error: ' + e.message); }
         }
 
         // Delete ticket
         async function deleteTicket(ticketId) {
             if (!confirm('Are you sure you want to delete this ticket?')) return;
-
-            const { error } = await supabaseClient.from('tickets').delete().eq('id', ticketId);
-
-            if (error) {
-                alert('Error: ' + error.message);
-                return;
-            }
-            loadTickets();
+            try {
+                const res = await fetch(API_URL + '/api/tickets/' + ticketId, { method: 'DELETE' });
+                if (!res.ok) { const d = await res.json(); alert('Error: ' + d.error); return; }
+                loadTickets();
+            } catch(e) { alert('Network error: ' + e.message); }
         }
         
         // Setup ticket filter listeners
