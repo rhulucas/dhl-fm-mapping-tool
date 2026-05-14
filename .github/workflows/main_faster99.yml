@@ -26,6 +26,7 @@ jobs:
           cp -r api/ deploy/api/
           cp wsgi.py deploy/
           cp index.html deploy/
+          cp admin_tickets.html deploy/
           cp style.css deploy/
           cp requirements.txt deploy/
           cd deploy

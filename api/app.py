@@ -195,6 +195,12 @@ def style():
     css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'style.css')
     return send_file(css_path, mimetype='text/css')
 
+@app.route('/admin/tickets')
+def admin_tickets_page():
+    """Serve the protected admin ticket table."""
+    admin_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'admin_tickets.html')
+    return send_file(admin_path)
+
 @app.route('/api/health/db', methods=['GET'])
 def db_health():
     """Check PostgreSQL connectivity without exposing secrets."""
@@ -613,6 +619,18 @@ def export_contacts():
 # =============================================================================
 # TICKET SYSTEM ENDPOINTS
 # =============================================================================
+
+def require_admin_passcode():
+    expected = os.environ.get('ADMIN_PASSCODE', 'faster99admin')
+    provided = request.headers.get('X-Admin-Passcode', '')
+    return bool(expected) and provided == expected
+
+@app.route('/api/admin/tickets', methods=['GET'])
+def admin_get_tickets():
+    """Admin-only ticket table data."""
+    if not require_admin_passcode():
+        return jsonify({"error": "Admin passcode required"}), 401
+    return get_tickets()
 
 @app.route('/api/tickets', methods=['GET'])
 def get_tickets():

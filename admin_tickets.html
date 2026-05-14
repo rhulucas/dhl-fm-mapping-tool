@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faster 99 - Admin Tickets</title>
+    <style>
+        :root {
+            --red: #d40511;
+            --ink: #202124;
+            --muted: #667085;
+            --line: #e5e7eb;
+            --bg: #f6f7f9;
+            --card: #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        header {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: var(--card);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .brand span {
+            color: var(--red);
+        }
+
+        .shell {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .login-panel,
+        .toolbar,
+        .table-wrap {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .login-panel {
+            max-width: 420px;
+            margin: 80px auto;
+            padding: 24px;
+        }
+
+        h1, h2 {
+            margin: 0;
+        }
+
+        .subtitle {
+            margin: 8px 0 0;
+            color: var(--muted);
+        }
+
+        .login-form {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #344054;
+        }
+
+        input,
+        select,
+        button {
+            height: 40px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            border: 1px solid #d0d5dd;
+            padding: 0 12px;
+            background: white;
+        }
+
+        button {
+            border: 0;
+            background: var(--red);
+            color: white;
+            font-weight: 700;
+            padding: 0 14px;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: #f2f4f7;
+            color: #344054;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .stat span {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) 160px auto auto;
+            gap: 10px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 960px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #f9fafb;
+            color: #475467;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            z-index: 1;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .open { background: #fee4e2; color: #b42318; }
+        .in_progress { background: #fef0c7; color: #b54708; }
+        .resolved { background: #dcfae6; color: #067647; }
+        .low { background: #ecfdf3; color: #027a48; }
+        .medium { background: #fffaeb; color: #b54708; }
+        .high, .urgent, .critical { background: #fee4e2; color: #b42318; }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .error {
+            color: #b42318;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 760px) {
+            header { padding: 0 16px; }
+            .shell { padding: 16px; }
+            .top-row { align-items: flex-start; flex-direction: column; }
+            .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .toolbar { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">Faster <span>99</span> Admin</div>
+        <button class="secondary" onclick="location.href='/'">Open App</button>
+    </header>
+
+    <main class="shell">
+        <section id="login-panel" class="login-panel">
+            <h1>Admin Tickets</h1>
+            <p class="subtitle">Enter the admin passcode to view ticket records from Azure PostgreSQL.</p>
+            <form class="login-form" onsubmit="unlockAdmin(event)">
+                <label for="passcode">Admin passcode</label>
+                <input id="passcode" type="password" autocomplete="current-password" required>
+                <button type="submit">Unlock</button>
+                <p id="login-error" class="error hidden"></p>
+            </form>
+        </section>
+
+        <section id="admin-panel" class="hidden">
+            <div class="top-row">
+                <div>
+                    <h1>Ticket Table</h1>
+                    <p class="subtitle">Live records from the `tickets` table.</p>
+                </div>
+                <button class="secondary" onclick="lockAdmin()">Lock</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat"><strong id="stat-total">0</strong><span>Total</span></div>
+                <div class="stat"><strong id="stat-open">0</strong><span>Open</span></div>
+                <div class="stat"><strong id="stat-progress">0</strong><span>In Progress</span></div>
+                <div class="stat"><strong id="stat-resolved">0</strong><span>Resolved</span></div>
+            </div>
+
+            <div class="toolbar">
+                <input id="search" type="search" placeholder="Search title, facility, category, user..." oninput="renderTickets()">
+                <select id="status-filter" onchange="renderTickets()">
+                    <option value="all">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+                <button class="secondary" onclick="loadTickets()">Refresh</button>
+                <button onclick="exportCsv()">Export CSV</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Facility</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>User</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticket-body">
+                        <tr><td colspan="8">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let adminPasscode = sessionStorage.getItem('adminPasscode') || '';
+        let tickets = [];
+
+        if (adminPasscode) {
+            showAdmin();
+            loadTickets();
+        }
+
+        async function unlockAdmin(event) {
+            event.preventDefault();
+            adminPasscode = document.getElementById('passcode').value.trim();
+            sessionStorage.setItem('adminPasscode', adminPasscode);
+            showAdmin();
+            await loadTickets();
+        }
+
+        function lockAdmin() {
+            sessionStorage.removeItem('adminPasscode');
+            adminPasscode = '';
+            tickets = [];
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('login-panel').classList.remove('hidden');
+            document.getElementById('passcode').value = '';
+        }
+
+        function showAdmin() {
+            document.getElementById('login-panel').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            document.getElementById('login-error').classList.add('hidden');
+        }
+
+        async function loadTickets() {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/tickets`, {
+                    headers: { 'X-Admin-Passcode': adminPasscode }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Unable to load tickets');
+                tickets = data.tickets || [];
+                updateStats();
+                renderTickets();
+            } catch (error) {
+                tickets = [];
+                document.getElementById('admin-panel').classList.add('hidden');
+                document.getElementById('login-panel').classList.remove('hidden');
+                document.getElementById('login-error').textContent = error.message;
+                document.getElementById('login-error').classList.remove('hidden');
+                sessionStorage.removeItem('adminPasscode');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').textContent = tickets.length;
+            document.getElementById('stat-open').textContent = tickets.filter(t => t.status === 'open').length;
+            document.getElementById('stat-progress').textContent = tickets.filter(t => t.status === 'in_progress').length;
+            document.getElementById('stat-resolved').textContent = tickets.filter(t => t.status === 'resolved').length;
+        }
+
+        function getFilteredTickets() {
+            const search = document.getElementById('search').value.trim().toLowerCase();
+            const status = document.getElementById('status-filter').value;
+            return tickets.filter(ticket => {
+                const matchesStatus = status === 'all' || ticket.status === status;
+                const haystack = [
+                    ticket.id,
+                    ticket.facility_id,
+                    ticket.title,
+                    ticket.category,
+                    ticket.priority,
+                    ticket.status,
+                    ticket.user_email
+                ].join(' ').toLowerCase();
+                return matchesStatus && (!search || haystack.includes(search));
+            });
+        }
+
+        function renderTickets() {
+            const rows = getFilteredTickets();
+            const body = document.getElementById('ticket-body');
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="8">No tickets found.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = rows.map(ticket => `
+                <tr>
+                    <td><strong>${escapeHtml(ticket.id)}</strong><div class="muted">DB ${ticket.db_id}</div></td>
+                    <td>${escapeHtml(ticket.facility_id)}</td>
+                    <td>${escapeHtml(ticket.title)}<div class="muted">${escapeHtml(ticket.description || '')}</div></td>
+                    <td>${escapeHtml(ticket.category)}</td>
+                    <td><span class="pill ${escapeHtml(ticket.priority)}">${escapeHtml(ticket.priority)}</span></td>
+                    <td><span class="pill ${escapeHtml(ticket.status)}">${escapeHtml(ticket.status.replace('_', ' '))}</span></td>
+                    <td>${escapeHtml(ticket.user_email || 'anonymous')}</td>
+                    <td>${formatDate(ticket.created_at)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportCsv() {
+            const rows = getFilteredTickets();
+            const headers = ['id', 'db_id', 'facility_id', 'title', 'category', 'priority', 'status', 'user_email', 'created_at'];
+            const csvRows = [
+                headers.join(','),
+                ...rows.map(ticket => headers.map(header => csvCell(ticket[header] || '')).join(','))
+            ];
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `faster99-tickets-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function formatDate(value) {
+            if (!value) return '';
+            return new Date(value).toLocaleString();
+        }
+
+        function csvCell(value) {
+            return `"${String(value).replaceAll('"', '""')}"`;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+    </script>
+</body>
+</html>

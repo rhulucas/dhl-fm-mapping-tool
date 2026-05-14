@@ -37,6 +37,7 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 - Filter and search tickets by status, title, facility, category
 - Direct navigation from ticket to facility on map
 - Persistent ticket storage in Azure Database for PostgreSQL
+- Protected admin ticket table for reviewing database records
 
 ### 📊 Dashboard & Analytics
 - Facility statistics overview (total facilities, sqft, employees, tickets)
@@ -102,6 +103,7 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 |--------|----------|-------------|
 | GET | `/` | Serve the application |
 | GET | `/style.css` | Serve styles |
+| GET | `/admin/tickets` | Protected admin ticket table |
 | GET | `/api/health/db` | Check PostgreSQL connectivity |
 | GET | `/api/facilities` | List all facilities |
 | GET | `/api/facilities/<id>` | Get single facility |
@@ -116,6 +118,7 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 | PUT | `/api/tickets/<id>` | Update ticket status/details |
 | DELETE | `/api/tickets/<id>` | Delete ticket |
 | GET | `/api/tickets/stats` | Ticket summary statistics |
+| GET | `/api/admin/tickets` | Admin-only ticket table data |
 
 ## Local Development
 
@@ -164,6 +167,24 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 
 > **Note:** Secrets are never stored in the repository. For Azure deployment, set `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_SSLMODE`, and optionally `OPENAI_API_KEY` under App Service → Environment Variables.
 
+## Admin Ticket Table
+
+The protected admin table is available at:
+
+```text
+/admin/tickets
+```
+
+It asks for an admin passcode and then displays the live `tickets` table with search, status filtering, refresh, and CSV export. The backing endpoint is `/api/admin/tickets`, which requires the `X-Admin-Passcode` request header.
+
+Set the passcode with:
+
+```text
+ADMIN_PASSCODE=your-demo-admin-passcode
+```
+
+For local development, if `ADMIN_PASSCODE` is not set, the demo fallback passcode is `faster99admin`. For a public demo, set `ADMIN_PASSCODE` in Azure App Service environment variables.
+
 ## Azure Deployment
 
 The repository includes a GitHub Actions workflow at `.github/workflows/main_faster99.yml`.
@@ -184,6 +205,7 @@ DB_PASSWORD=your-password
 DB_PORT=5432
 DB_SSLMODE=require
 OPENAI_API_KEY=optional-openai-key
+ADMIN_PASSCODE=your-demo-admin-passcode
 ```
 
 Production smoke tests:
@@ -197,6 +219,7 @@ curl https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/ti
 
 - **Database health check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
 - **Ticket API check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/tickets
+- **Admin ticket table**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/admin/tickets
 
 The health check is a deployment diagnostic endpoint. It confirms that the Flask backend can read its Azure App Service environment variables, connect to Azure PostgreSQL, create/read the `tickets` table, and report the current ticket count.
 
