@@ -4,13 +4,14 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 
 ## Live Demo
 
-- **Frontend**: https://zealous-beach-008e8110f.2.azurestaticapps.net
+- **Production App**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net
+- **Database health check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
 
 > Demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
 
 **Scan to open on mobile:**
 
-![QR Code](https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://zealous-beach-008e8110f.2.azurestaticapps.net)
+![QR Code](https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net)
 
 ## Features
 
@@ -27,20 +28,23 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 ### 🏢 3D Facility Visualization
 - Three.js powered 3D floor plans
 - Interactive equipment inspection with status indicators
-- Real-time equipment status display (Operational / Maintenance / Fault)
-- One-click issue reporting from 3D view
+- Equipment status is linked to active maintenance tickets
+- AI diagnosis panel for non-operational equipment
+- One-click repair ticket creation from the 3D diagnosis workflow
 
 ### 🎫 Work Order Management
 - Create and track maintenance tickets
 - Status workflow: Open → In Progress → Resolved
 - Filter and search tickets by status, title, facility, category
 - Direct navigation from ticket to facility on map
+- Persistent ticket storage in Azure Database for PostgreSQL
 
 ### 📊 Dashboard & Analytics
 - Facility statistics overview (total facilities, sqft, employees, tickets)
 - Chart.js donut and bar charts (facility types, ticket status, top states)
-- Equipment inventory tracking across all facilities
-- Maintenance calendar with scheduled tasks
+- Deterministic equipment inventory across all facilities
+- Equipment status is derived from tickets and scheduled maintenance windows
+- Maintenance calendar with clickable events that navigate to the facility, 3D view, or related ticket
 - Data import/export (CSV)
 
 ### 📱 Mobile Responsive
@@ -59,14 +63,15 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 - Notifies when another user creates a ticket (via real-time sync)
 
 ### 🔐 Authentication & Database
-- Real user authentication via Supabase Auth (email/password)
-- Persistent ticket storage in Supabase PostgreSQL database
-- Tickets shared across all users in real-time
+- Demo login with role selection
+- Persistent ticket storage in Azure Database for PostgreSQL Flexible Server
+- Tickets shared across all users through the Flask API
 - Role-based access (Administrator, Manager, Technician, Viewer)
 
 ### 🔧 Technical Features
 - RESTful API backend with AI endpoints
-- Full-stack Azure + Supabase deployment
+- Full-stack Azure App Service deployment
+- Azure PostgreSQL connection health endpoint
 - CI/CD with GitHub Actions
 
 ## Tech Stack
@@ -79,8 +84,8 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 | **AI** | OpenAI GPT-4o-mini (ticket suggestions, diagnosis, summaries) |
 | **Charts** | Chart.js (donut & bar charts) |
 | **Backend** | Python, Flask, Gunicorn |
-| **Database** | Supabase (PostgreSQL, Auth, Realtime) |
-| **Cloud** | Azure Static Web Apps, Azure App Service |
+| **Database** | Azure Database for PostgreSQL Flexible Server |
+| **Cloud** | Azure App Service |
 | **CI/CD** | GitHub Actions |
 
 ## AI Endpoints
@@ -90,12 +95,15 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 | POST | `/api/ai/ticket-suggest` | Auto-fill ticket from description |
 | POST | `/api/ai/dashboard-summary` | Generate operations summary |
 | POST | `/api/ai/equipment-diagnosis` | Diagnose equipment fault |
+| GET | `/api/ai/debug` | Check whether the OpenAI key is configured |
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Health check |
+| GET | `/` | Serve the application |
+| GET | `/style.css` | Serve styles |
+| GET | `/api/health/db` | Check PostgreSQL connectivity |
 | GET | `/api/facilities` | List all facilities |
 | GET | `/api/facilities/<id>` | Get single facility |
 | GET | `/api/facilities/stats` | Get statistics |
@@ -103,6 +111,12 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 | POST | `/api/facilities` | Create facility |
 | PUT | `/api/facilities/<id>` | Update facility |
 | DELETE | `/api/facilities/<id>` | Delete facility |
+| GET | `/api/tickets` | List tickets |
+| POST | `/api/tickets` | Create ticket |
+| GET | `/api/tickets/<id>` | Get one ticket |
+| PUT | `/api/tickets/<id>` | Update ticket status/details |
+| DELETE | `/api/tickets/<id>` | Delete ticket |
+| GET | `/api/tickets/stats` | Ticket summary statistics |
 
 ## Local Development
 
@@ -110,7 +124,8 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 
 - Python 3.11+
 - A Mapbox account (free tier available)
-- An OpenAI API key (for AI features)
+- Azure Database for PostgreSQL connection details
+- An OpenAI API key for AI features (optional; equipment diagnosis has a local fallback)
 
 ### Setup
 
@@ -120,26 +135,64 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
    cd dhl-fm-mapping-tool
    ```
 
-2. Install API dependencies:
+2. Create a virtual environment and install dependencies:
    ```bash
-   cd api
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
-3. Start the API with your OpenAI key:
+3. Start the Flask app with PostgreSQL environment variables:
    ```bash
-   OPENAI_API_KEY=your_key_here python app.py
-   ```
-   API will be available at http://localhost:5000
+   export DB_HOST="your-server.postgres.database.azure.com"
+   export DB_NAME="postgres"
+   export DB_USER="your-admin-user"
+   export DB_PASSWORD="your-password"
+   export DB_PORT="5432"
+   export DB_SSLMODE="require"
+   export OPENAI_API_KEY="your_openai_key_optional"
 
-4. In a separate terminal, start the frontend:
+   PORT=5001 python api/app.py
+   ```
+   App and API will be available at http://127.0.0.1:5001
+
+4. Verify the database connection:
    ```bash
-   python3 -m http.server 8080
+   curl http://127.0.0.1:5001/api/health/db
    ```
 
-5. Open http://localhost:8080
+5. Open http://127.0.0.1:5001
 
-> **Note:** The OpenAI API key is never stored in any file. It is passed as an environment variable only. For Azure deployment, set `OPENAI_API_KEY` under App Service → Environment Variables.
+> **Note:** Secrets are never stored in the repository. For Azure deployment, set `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_SSLMODE`, and optionally `OPENAI_API_KEY` under App Service → Environment Variables.
+
+## Azure Deployment
+
+The repository includes a GitHub Actions workflow at `.github/workflows/main_faster99.yml`.
+
+Deployment flow:
+
+1. Push to `main`.
+2. GitHub Actions builds a deployment package with `api/`, `wsgi.py`, `index.html`, `style.css`, and `requirements.txt`.
+3. The package is deployed to the Azure Web App named `faster99`.
+
+Required Azure App Service environment variables:
+
+```text
+DB_HOST=your-server.postgres.database.azure.com
+DB_NAME=postgres
+DB_USER=your-admin-user
+DB_PASSWORD=your-password
+DB_PORT=5432
+DB_SSLMODE=require
+OPENAI_API_KEY=optional-openai-key
+```
+
+Production smoke tests:
+
+```bash
+curl https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
+curl https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/tickets
+```
 
 ## Project Structure
 
@@ -162,11 +215,11 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 - **3D Graphics**: Three.js scene creation, interactive objects, raycasting
 - **Mapping**: Mapbox GL JS, GeoJSON data handling, custom markers
 - **Backend Development**: Python Flask, RESTful API design
-- **Cloud Deployment**: Azure Static Web Apps, Azure App Service
-- **Database Integration**: Supabase Auth, PostgreSQL, real-time subscriptions
+- **Cloud Deployment**: Azure App Service
+- **Database Integration**: Azure PostgreSQL, environment-based connection management
 - **Notifications**: Browser Notification API for real-time ticket alerts
 - **DevOps**: CI/CD with GitHub Actions, automated deployments
-- **UX Design**: Intuitive navigation, status workflows, data visualization
+- **UX Design**: Intuitive navigation, status workflows, 3D-linked work orders, data visualization
 
 ## License
 
