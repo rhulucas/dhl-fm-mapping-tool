@@ -946,6 +946,7 @@
         // =============================================
         
         let currentCalendarDate = new Date();
+        let visibleUpcomingMaintenance = [];
         
         function buildMaintenanceSchedule() {
             if (!facilitiesData) return [];
@@ -1055,8 +1056,70 @@
             );
             
             if (events.length > 0) {
-                alert(events.map(e => `${e.title} at ${e.facility}`).join('\n'));
+                showMaintenanceEventPanel(date, events);
             }
+        }
+
+        function showMaintenanceEventPanel(date, events) {
+            const existing = document.getElementById('maintenance-event-modal');
+            if (existing) existing.remove();
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            const modal = document.createElement('div');
+            modal.id = 'maintenance-event-modal';
+            modal.className = 'maintenance-event-modal';
+            modal.innerHTML = `
+                <div class="maintenance-event-card">
+                    <button class="maintenance-event-close" onclick="closeMaintenanceEventPanel()">×</button>
+                    <h3>${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}</h3>
+                    <div class="maintenance-event-list">
+                        ${events.map((event, index) => renderMaintenanceEvent(event, index)).join('')}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function renderMaintenanceEvent(event, index) {
+            const ticket = allTickets.find(t => t.facility_id === event.facility && t.title === event.title);
+            const ticketAction = ticket
+                ? `<button onclick="openMaintenanceTicket('${ticket.id}')">View Ticket</button>`
+                : '';
+
+            return `
+                <div class="maintenance-event">
+                    <div class="maintenance-event-main">
+                        <span class="maint-type">${event.type}</span>
+                        <h4>${event.title}</h4>
+                        <p>📍 ${event.facilityName || event.facility}</p>
+                    </div>
+                    <div class="maintenance-event-actions">
+                        <button onclick="openMaintenanceFacility('${event.facility}')">View Facility</button>
+                        <button onclick="openMaintenance3D('${event.facility}')">View 3D</button>
+                        ${ticketAction}
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeMaintenanceEventPanel() {
+            document.getElementById('maintenance-event-modal')?.remove();
+        }
+
+        function openMaintenanceFacility(facilityId) {
+            closeMaintenanceEventPanel();
+            goToFacility(facilityId);
+        }
+
+        function openMaintenance3D(facilityId) {
+            closeMaintenanceEventPanel();
+            goToFacility3D(facilityId);
+        }
+
+        function openMaintenanceTicket(ticketId) {
+            closeMaintenanceEventPanel();
+            viewTicket(ticketId);
         }
 
         function renderUpcomingMaintenance() {
@@ -1071,8 +1134,9 @@
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             
-            document.getElementById('upcoming-list').innerHTML = upcoming.map(m => `
-                <div class="maintenance-item">
+            visibleUpcomingMaintenance = upcoming;
+            document.getElementById('upcoming-list').innerHTML = upcoming.map((m, index) => `
+                <div class="maintenance-item" onclick="openUpcomingMaintenance(${index})">
                     <div class="maint-date">
                         <span class="maint-day">${m.date.getDate()}</span>
                         <span class="maint-month">${monthNames[m.date.getMonth()]}</span>
@@ -1084,6 +1148,12 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        function openUpcomingMaintenance(index) {
+            const event = visibleUpcomingMaintenance[index];
+            if (!event) return;
+            showMaintenanceEventPanel(event.date, [event]);
         }
         
         // Download CSV template
@@ -2208,9 +2278,12 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
         
         // View ticket from 3D view
         function viewTicket(ticketId) {
-            // Close 3D modal
-            cleanup3DScene();
-            document.getElementById('floor-plan-modal').remove();
+            // Close 3D modal if this navigation started from the floor plan
+            const modal = document.getElementById('floor-plan-modal');
+            if (modal) {
+                cleanup3DScene();
+                modal.remove();
+            }
             
             // Switch to tickets tab
             switchTab('tickets');
