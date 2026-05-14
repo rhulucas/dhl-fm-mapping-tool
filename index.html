@@ -1152,6 +1152,11 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             aiEquipmentDiagnosis(currentEquipmentData.name, currentEquipmentData.status, current3DFacilityId || 'unknown');
         }
 
+        function createRepairTicketFromDiagnosis() {
+            if (!currentEquipmentData) return;
+            reportIssue(currentEquipmentData.name);
+        }
+
         async function aiEquipmentDiagnosis(equipmentName, status, facilityId) {
             const infoDiv = document.getElementById('equipment-info');
             if (!infoDiv) return;
@@ -1183,7 +1188,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                     <strong>⚡ Immediate Actions:</strong>
                     <ol style="margin:3px 0 6px 14px;padding:0;">${actions}</ol>
                     <strong>⏱ Est. Downtime:</strong> ${data.estimated_downtime || 'Unknown'}<br>
-                    <button onclick="switchTab('tickets')" style="margin-top:7px;width:100%;padding:5px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🎫 Create Repair Ticket</button>
+                    <button onclick="createRepairTicketFromDiagnosis()" style="margin-top:7px;width:100%;padding:5px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">🎫 Create Repair Ticket</button>
                     </div>
                 `;
             } catch (e) {
