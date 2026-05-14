@@ -5,7 +5,7 @@ RESTful API backend for facility management system.
 Designed for deployment on Azure App Service.
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
 import os
@@ -93,22 +93,9 @@ def save_data(data):
 
 @app.route('/')
 def index():
-    """API root - health check."""
-    return jsonify({
-        "service": "Faster 99 Facility Management API",
-        "version": "1.0.0",
-        "status": "healthy",
-        "endpoints": {
-            "GET /api/facilities": "List all facilities",
-            "GET /api/facilities/<id>": "Get single facility",
-            "GET /api/facilities/stats": "Get statistics",
-            "GET /api/facilities/search?q=<query>": "Search facilities",
-            "GET /api/facilities/filter?type=<type>&state=<state>": "Filter facilities",
-            "POST /api/facilities": "Create new facility",
-            "PUT /api/facilities/<id>": "Update facility",
-            "DELETE /api/facilities/<id>": "Delete facility"
-        }
-    })
+    """Serve the frontend."""
+    index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
+    return send_file(index_path)
 
 
 @app.route('/api/facilities', methods=['GET'])
