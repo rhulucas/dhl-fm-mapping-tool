@@ -714,10 +714,7 @@
                     loadTickets();
                     
                     // Initialize resources
-                    setTimeout(() => {
-                        updateInventory();
-                        renderCalendar();
-                    }, 500);
+                    setTimeout(refreshResources, 500);
 
                     // Click interaction - show facility details
                     map.on('click', 'points', (e) => {
@@ -745,6 +742,13 @@
             
             document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
+            if (tabName === 'resources') refreshResources();
+        }
+
+        function refreshResources() {
+            if (!facilitiesData) return;
+            updateInventory();
+            renderCalendar();
         }
 
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -804,33 +808,87 @@
             { name: 'Lighting System', type: 'lighting' }
         ];
 
+        const maintenancePlans = [
+            { title: 'HVAC Preventive Service', equipmentType: 'hvac', type: 'Preventive', cadenceDays: 45 },
+            { title: 'Fire System Inspection', equipmentType: 'fire', type: 'Safety', cadenceDays: 90 },
+            { title: 'Conveyor Belt Service', equipmentType: 'conveyor', type: 'Preventive', cadenceDays: 60 },
+            { title: 'Security System Audit', equipmentType: 'security', type: 'Compliance', cadenceDays: 75 },
+            { title: 'Forklift Charger Check', equipmentType: 'forklift', type: 'Preventive', cadenceDays: 50 },
+            { title: 'Lighting Panel Inspection', equipmentType: 'lighting', type: 'Safety', cadenceDays: 80 }
+        ];
+
+        function hashString(value) {
+            return [...String(value)].reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0);
+        }
+
+        function getTicketEquipmentType(ticket) {
+            const title = (ticket.title || '').toLowerCase();
+            const category = (ticket.category || '').toLowerCase();
+            if (title.includes('hvac') || category === 'hvac') return 'hvac';
+            if (title.includes('fire')) return 'fire';
+            if (title.includes('conveyor')) return 'conveyor';
+            if (title.includes('security') || category === 'security') return 'security';
+            if (title.includes('forklift') || title.includes('charger')) return 'forklift';
+            if (title.includes('lighting') || category === 'electrical') return 'lighting';
+            if (category === 'equipment') return 'conveyor';
+            return null;
+        }
+
+        function getEquipmentTicket(facilityId, equipment) {
+            const related = allTickets.filter(ticket => {
+                if (ticket.facility_id !== facilityId) return false;
+                const title = (ticket.title || '').toLowerCase();
+                return title.includes(equipment.name.toLowerCase()) || getTicketEquipmentType(ticket) === equipment.type;
+            });
+            const active = related.find(ticket => ticket.status === 'open') ||
+                           related.find(ticket => ticket.status === 'in_progress');
+            return active || related.find(ticket => ticket.status === 'resolved') || null;
+        }
+
+        function getNextMaintenanceDate(facilityId, equipmentType) {
+            const plan = maintenancePlans.find(item => item.equipmentType === equipmentType);
+            if (!plan) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const seed = Math.abs(hashString(`${facilityId}-${equipmentType}`));
+            const offset = seed % plan.cadenceDays;
+            const nextDate = new Date(today);
+            nextDate.setDate(today.getDate() + offset);
+            return nextDate;
+        }
+
+        function getEquipmentStatus(facilityId, equipment) {
+            const ticket = getEquipmentTicket(facilityId, equipment);
+            if (ticket) {
+                if (ticket.status === 'open') return { status: 'fault', ticket };
+                if (ticket.status === 'in_progress') return { status: 'maintenance', ticket };
+            }
+
+            const nextMaintenance = getNextMaintenanceDate(facilityId, equipment.type);
+            const daysUntilMaintenance = nextMaintenance
+                ? Math.ceil((nextMaintenance - new Date().setHours(0, 0, 0, 0)) / 86400000)
+                : 999;
+
+            if (daysUntilMaintenance <= 7) {
+                return { status: 'maintenance', ticket: null, nextMaintenance };
+            }
+
+            return { status: 'operational', ticket: null, nextMaintenance };
+        }
+
         function updateInventory() {
             if (!facilitiesData) return;
             
             const inventoryData = [];
             let operational = 0, maintenance = 0, fault = 0;
             
-            // Generate equipment status for each facility
-            facilitiesData.features.slice(0, 20).forEach(f => {
+            // Build deterministic equipment status from facility data, tickets, and maintenance plans.
+            facilitiesData.features.forEach(f => {
                 const facilityId = f.properties.id;
                 
                 equipmentTypes.forEach(eq => {
-                    // Check if there's a ticket for this equipment at this facility
-                    const ticket = allTickets.find(t => 
-                        t.facility_id === facilityId && 
-                        t.title.includes(eq.name)
-                    );
-                    
-                    let status = 'operational';
-                    if (ticket) {
-                        status = ticket.status === 'resolved' ? 'operational' : 
-                                 ticket.status === 'in_progress' ? 'maintenance' : 'fault';
-                    }
-                    
-                    // Add some random variation for demo
-                    if (!ticket && Math.random() < 0.05) {
-                        status = 'maintenance';
-                    }
+                    const equipmentState = getEquipmentStatus(facilityId, eq);
+                    const status = equipmentState.status;
                     
                     if (status === 'operational') operational++;
                     else if (status === 'maintenance') maintenance++;
@@ -841,7 +899,9 @@
                         facilityName: f.properties.name,
                         equipment: eq.name,
                         type: eq.type,
-                        status: status
+                        status: status,
+                        ticketId: equipmentState.ticket?.id || '',
+                        nextMaintenance: equipmentState.nextMaintenance
                     });
                 });
             });
@@ -887,23 +947,54 @@
         
         let currentCalendarDate = new Date();
         
-        // Sample maintenance schedule
-        const maintenanceSchedule = [
-            { date: new Date(2026, 1, 28), title: 'HVAC Inspection', facility: 'DC-001', type: 'Preventive' },
-            { date: new Date(2026, 2, 3), title: 'Fire System Test', facility: 'HB-002', type: 'Safety' },
-            { date: new Date(2026, 2, 5), title: 'Conveyor Maintenance', facility: 'WH-018', type: 'Preventive' },
-            { date: new Date(2026, 2, 10), title: 'Security Audit', facility: 'CS-006', type: 'Compliance' },
-            { date: new Date(2026, 2, 15), title: 'Electrical Inspection', facility: 'DC-005', type: 'Safety' },
-            { date: new Date(2026, 2, 20), title: 'Loading Dock Service', facility: 'HB-074', type: 'Preventive' },
-            { date: new Date(2026, 2, 25), title: 'Generator Test', facility: 'WH-045', type: 'Safety' },
-            { date: new Date(2026, 3, 1), title: 'Quarterly HVAC Service', facility: 'DC-001', type: 'Preventive' },
-            { date: new Date(2026, 3, 8), title: 'Roof Inspection', facility: 'HB-002', type: 'Preventive' },
-            { date: new Date(2026, 3, 15), title: 'Pest Control', facility: 'WH-063', type: 'Preventive' }
-        ];
+        function buildMaintenanceSchedule() {
+            if (!facilitiesData) return [];
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const scheduledEvents = [];
+
+            facilitiesData.features.forEach(feature => {
+                const facilityId = feature.properties.id;
+                const facilityName = feature.properties.name;
+                const seed = Math.abs(hashString(facilityId));
+                const plan = maintenancePlans[seed % maintenancePlans.length];
+                const date = getNextMaintenanceDate(facilityId, plan.equipmentType);
+
+                scheduledEvents.push({
+                    date,
+                    title: plan.title,
+                    facility: facilityId,
+                    facilityName,
+                    type: plan.type,
+                    source: 'scheduled'
+                });
+            });
+
+            const ticketEvents = allTickets
+                .filter(ticket => ['open', 'in_progress'].includes(ticket.status))
+                .map(ticket => {
+                    const date = ticket.status === 'in_progress'
+                        ? new Date()
+                        : new Date(new Date().setDate(new Date().getDate() + 1));
+                    date.setHours(0, 0, 0, 0);
+                    return {
+                        date,
+                        title: ticket.title || 'Repair Ticket',
+                        facility: ticket.facility_id,
+                        facilityName: ticket.facility_id,
+                        type: ticket.status === 'in_progress' ? 'Active Work' : 'Open Ticket',
+                        source: 'ticket'
+                    };
+                });
+
+            return [...ticketEvents, ...scheduledEvents];
+        }
 
         function renderCalendar() {
             const year = currentCalendarDate.getFullYear();
             const month = currentCalendarDate.getMonth();
+            const maintenanceSchedule = buildMaintenanceSchedule();
             
             // Update header
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -957,6 +1048,7 @@
         }
 
         function showDayEvents(year, month, day) {
+            const maintenanceSchedule = buildMaintenanceSchedule();
             const date = new Date(year, month, day);
             const events = maintenanceSchedule.filter(m => 
                 m.date.toDateString() === date.toDateString()
@@ -969,6 +1061,8 @@
 
         function renderUpcomingMaintenance() {
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const maintenanceSchedule = buildMaintenanceSchedule();
             const upcoming = maintenanceSchedule
                 .filter(m => m.date >= today)
                 .sort((a, b) => a.date - b.date)
@@ -1286,6 +1380,7 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
             }
             renderTickets();
             renderTicketChart();
+            refreshResources();
         }
 
         
