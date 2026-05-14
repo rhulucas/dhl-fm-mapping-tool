@@ -5,7 +5,6 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 ## Live Demo
 
 - **Production App**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net
-- **Database health check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
 
 > Demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
 
@@ -193,6 +192,13 @@ Production smoke tests:
 curl https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
 curl https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/tickets
 ```
+
+## Developer Checks
+
+- **Database health check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/health/db
+- **Ticket API check**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/api/tickets
+
+The health check is a deployment diagnostic endpoint. It confirms that the Flask backend can read its Azure App Service environment variables, connect to Azure PostgreSQL, create/read the `tickets` table, and report the current ticket count.
 
 ## Project Structure
 
