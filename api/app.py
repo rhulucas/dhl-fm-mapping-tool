@@ -97,6 +97,12 @@ def index():
     index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
     return send_file(index_path)
 
+@app.route('/style.css')
+def style():
+    """Serve the stylesheet."""
+    css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'style.css')
+    return send_file(css_path, mimetype='text/css')
+
 
 @app.route('/api/facilities', methods=['GET'])
 def get_facilities():
