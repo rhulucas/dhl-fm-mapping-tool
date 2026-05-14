@@ -9,6 +9,7 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
 import os
+from urllib.parse import urlparse
 import psycopg2
 import psycopg2.extras
 
@@ -22,18 +23,86 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), 'data.json')
 # POSTGRESQL DATABASE
 # =============================================================================
 
-def get_db_connection():
-    return psycopg2.connect(
-        host=os.environ.get('DB_HOST', 'rohu-db.postgres.database.azure.com'),
-        database=os.environ.get('DB_NAME', 'faster99_fm_db'),
-        user=os.environ.get('DB_USER', 'rohuadmin'),
-        password=os.environ.get('DB_PASSWORD', ''),
-        port=int(os.environ.get('DB_PORT', 5432)),
-        sslmode='require'
+def _get_first_env_with_prefix(prefix):
+    for key, value in os.environ.items():
+        if key.startswith(prefix) and value:
+            return value
+    return None
+
+def _parse_semicolon_connection_string(value):
+    aliases = {
+        'server': 'host',
+        'host': 'host',
+        'database': 'database',
+        'dbname': 'database',
+        'port': 'port',
+        'user id': 'user',
+        'userid': 'user',
+        'user': 'user',
+        'username': 'user',
+        'password': 'password',
+        'pwd': 'password',
+        'ssl mode': 'sslmode',
+        'sslmode': 'sslmode',
+    }
+    result = {}
+    for part in value.split(';'):
+        if '=' not in part:
+            continue
+        key, raw = part.split('=', 1)
+        normalized = aliases.get(key.strip().lower())
+        if normalized:
+            result[normalized] = raw.strip()
+    if 'port' in result:
+        result['port'] = int(result['port'])
+    return result
+
+def _parse_database_url(value):
+    parsed = urlparse(value)
+    return {
+        'host': parsed.hostname,
+        'database': parsed.path.lstrip('/'),
+        'user': parsed.username,
+        'password': parsed.password,
+        'port': parsed.port or 5432,
+        'sslmode': 'require'
+    }
+
+def get_db_config():
+    connection_string = (
+        os.environ.get('DATABASE_URL') or
+        os.environ.get('AZURE_POSTGRESQL_CONNECTIONSTRING') or
+        os.environ.get('POSTGRESQLCONNSTR_DefaultConnection') or
+        os.environ.get('CUSTOMCONNSTR_DefaultConnection') or
+        _get_first_env_with_prefix('POSTGRESQLCONNSTR_') or
+        _get_first_env_with_prefix('CUSTOMCONNSTR_')
     )
 
-def init_db():
-    conn = get_db_connection()
+    if connection_string:
+        if connection_string.startswith(('postgres://', 'postgresql://')):
+            return _parse_database_url(connection_string)
+        if ';' in connection_string:
+            config = _parse_semicolon_connection_string(connection_string)
+            config.setdefault('sslmode', 'require')
+            return config
+        return connection_string
+
+    return {
+        'host': os.environ.get('DB_HOST', 'rohu-db.postgres.database.azure.com'),
+        'database': os.environ.get('DB_NAME', 'faster99_fm_db'),
+        'user': os.environ.get('DB_USER', 'rohuadmin'),
+        'password': os.environ.get('DB_PASSWORD', ''),
+        'port': int(os.environ.get('DB_PORT', 5432)),
+        'sslmode': os.environ.get('DB_SSLMODE', 'require')
+    }
+
+def get_db_connection():
+    config = get_db_config()
+    if isinstance(config, str):
+        return psycopg2.connect(config)
+    return psycopg2.connect(**config)
+
+def ensure_tickets_table(conn):
     cur = conn.cursor()
     cur.execute('''
         CREATE TABLE IF NOT EXISTS tickets (
@@ -51,6 +120,10 @@ def init_db():
     ''')
     conn.commit()
     cur.close()
+
+def init_db():
+    conn = get_db_connection()
+    ensure_tickets_table(conn)
     conn.close()
 
 try:
@@ -86,6 +159,25 @@ def save_data(data):
     with open(DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
+def get_safe_db_status():
+    config = get_db_config()
+    if isinstance(config, str):
+        if config.startswith(('postgres://', 'postgresql://')):
+            parsed = _parse_database_url(config)
+            return {
+                'host': parsed.get('host'),
+                'database': parsed.get('database'),
+                'user': parsed.get('user'),
+                'source': 'connection_string'
+            }
+        return {'source': 'connection_string'}
+    return {
+        'host': config.get('host'),
+        'database': config.get('database'),
+        'user': config.get('user'),
+        'source': 'environment'
+    }
+
 
 # =============================================================================
 # API ENDPOINTS
@@ -102,6 +194,22 @@ def style():
     """Serve the stylesheet."""
     css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'style.css')
     return send_file(css_path, mimetype='text/css')
+
+@app.route('/api/health/db', methods=['GET'])
+def db_health():
+    """Check PostgreSQL connectivity without exposing secrets."""
+    status = get_safe_db_status()
+    try:
+        conn = get_db_connection()
+        ensure_tickets_table(conn)
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM tickets')
+        ticket_count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return jsonify({**status, 'ok': True, 'ticket_count': ticket_count})
+    except Exception as e:
+        return jsonify({**status, 'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/api/facilities', methods=['GET'])
@@ -514,6 +622,7 @@ def get_tickets():
 
     try:
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         query = "SELECT * FROM tickets WHERE 1=1"
         params = []
@@ -547,6 +656,7 @@ def create_ticket():
 
     try:
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
             '''INSERT INTO tickets (facility_id, title, description, category, priority, status, user_email)
@@ -576,6 +686,7 @@ def get_ticket(ticket_id):
     try:
         db_id = int(ticket_id.split('-')[1])
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("SELECT * FROM tickets WHERE id = %s", (db_id,))
         row = cur.fetchone()
@@ -594,6 +705,7 @@ def update_ticket(ticket_id):
     try:
         db_id = int(ticket_id.split('-')[1])
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         updates = []
         params = []
@@ -626,6 +738,7 @@ def delete_ticket(ticket_id):
     try:
         db_id = int(ticket_id.split('-')[1])
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("DELETE FROM tickets WHERE id = %s RETURNING *", (db_id,))
         row = cur.fetchone()
@@ -679,6 +792,57 @@ def call_openai(prompt, max_tokens=400, json_mode=True):
     with urllib.request.urlopen(req, timeout=30) as resp:
         result = json.loads(resp.read().decode('utf-8'))
         return result['choices'][0]['message']['content']
+
+def fallback_equipment_diagnosis(equipment_name, status):
+    """Provide a deterministic diagnosis when OpenAI is not configured."""
+    name = (equipment_name or '').lower()
+    if 'conveyor' in name:
+        return {
+            "likely_causes": [
+                "Motor overload, jammed belt, or misaligned rollers",
+                "Photo eye or limit switch blocked by debris",
+                "Emergency stop, VFD fault, or power interruption"
+            ],
+            "immediate_actions": [
+                "Lock out the conveyor and inspect the belt path for jams",
+                "Check sensors, guards, and emergency stop status",
+                "Review controller/VFD fault codes before restarting"
+            ],
+            "estimated_downtime": "1-3 hours",
+            "severity": "high" if status == "fault" else "medium",
+            "source": "local fallback"
+        }
+    if 'forklift' in name or 'charger' in name:
+        return {
+            "likely_causes": [
+                "Loose charging connector or damaged cable",
+                "Battery temperature, voltage, or cell imbalance fault",
+                "Charger breaker, fuse, or input power issue"
+            ],
+            "immediate_actions": [
+                "Inspect connector pins, cable jacket, and charger display",
+                "Confirm input breaker is on and no fault code is active",
+                "Move the forklift to a backup charger if available"
+            ],
+            "estimated_downtime": "30 minutes-2 hours",
+            "severity": "medium",
+            "source": "local fallback"
+        }
+    return {
+        "likely_causes": [
+            "Power supply, control signal, or sensor fault",
+            "Mechanical wear, blockage, or loose connection",
+            "Recent maintenance or configuration change"
+        ],
+        "immediate_actions": [
+            "Secure the area and confirm the equipment is safe to inspect",
+            "Check power, indicators, alarms, and recent ticket history",
+            "Escalate to maintenance if the issue cannot be cleared safely"
+        ],
+        "estimated_downtime": "1-4 hours",
+        "severity": "high" if status == "fault" else "medium",
+        "source": "local fallback"
+    }
 
 
 @app.route('/api/ai/debug', methods=['GET'])
@@ -748,13 +912,15 @@ Return only the summary text, no JSON."""
 @app.route('/api/ai/equipment-diagnosis', methods=['POST'])
 def ai_equipment_diagnosis():
     """AI diagnoses equipment issues and suggests repair actions."""
-    if not get_openai_key():
-        return jsonify({"error": "AI service not configured"}), 503
-
     body = request.get_json() or {}
     equipment_name = body.get('name', 'Unknown Equipment')
     status = body.get('status', 'fault')
     facility_id = body.get('facility_id', 'unknown')
+
+    if not get_openai_key():
+        result = fallback_equipment_diagnosis(equipment_name, status)
+        result["note"] = "OpenAI key is not configured, so this is a local rules-based diagnosis."
+        return jsonify(result)
 
     prompt = f"""You are a facility maintenance expert. Equipment report:
 - Facility: {facility_id}
@@ -781,6 +947,7 @@ def ticket_stats():
     """Get ticket statistics."""
     try:
         conn = get_db_connection()
+        ensure_tickets_table(conn)
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("SELECT COUNT(*) as total FROM tickets")
         total = cur.fetchone()['total']

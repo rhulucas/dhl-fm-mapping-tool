@@ -626,7 +626,14 @@
         });
 
         // API Configuration - fallback to local data if API unavailable
-        const API_URL = 'https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net';
+        const AZURE_API_URL = 'https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net';
+        const LOCAL_API_PORT = '5001';
+        const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        const API_URL = window.FASTER99_API_URL || (
+            isLocalHost
+                ? `${window.location.protocol}//${window.location.hostname}:${['5000', '5001'].includes(window.location.port) ? window.location.port : LOCAL_API_PORT}`
+                : AZURE_API_URL
+        );
         let useLocalStorage = false; // Will be set to true if API fails
 
         map.on('load', () => {
@@ -1163,12 +1170,14 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                 const causes = (data.likely_causes || []).map(c => `<li>${c}</li>`).join('');
                 const actions = (data.immediate_actions || []).map(a => `<li>${a}</li>`).join('');
                 const severityColor = { low: '#2ecc71', medium: '#f39c12', high: '#e67e22', critical: '#e74c3c' }[data.severity] || '#999';
+                const sourceNote = data.note ? `<p style="margin:5px 0;color:#7f8c8d;font-size:11px;">${data.note}</p>` : '';
 
                 infoDiv.innerHTML = `
                     <div style="font-size:12px;line-height:1.5;">
                     <strong style="font-size:13px;">${equipmentName}</strong>
                     <span style="float:right;background:${severityColor};color:white;padding:1px 7px;border-radius:10px;font-size:10px;">${data.severity || status}</span>
                     <hr style="margin:6px 0;border-color:#ddd;">
+                    ${sourceNote}
                     <strong>🔍 Likely Causes:</strong>
                     <ol style="margin:3px 0 6px 14px;padding:0;">${causes}</ol>
                     <strong>⚡ Immediate Actions:</strong>
@@ -1178,7 +1187,13 @@ FAC-002,Distribution Center,distribution,456 Oak Ave Dallas TX,32.7767,-96.7970,
                     </div>
                 `;
             } catch (e) {
-                infoDiv.innerHTML = `<strong>${equipmentName}</strong><br><span style="color:#c0392b;">AI unavailable: ${e.message}</span>`;
+                infoDiv.innerHTML = `
+                    <strong>${equipmentName}</strong><br>
+                    <span style="color:#c0392b;">AI Diagnosis unavailable</span>
+                    <p style="margin:6px 0 0;color:#555;font-size:12px;line-height:1.4;">
+                        ${e.message}. Start the Flask server with <code>OPENAI_API_KEY</code>, then click AI Diagnosis again.
+                    </p>
+                `;
             }
         }
 
