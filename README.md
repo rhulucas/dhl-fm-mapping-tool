@@ -15,6 +15,26 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 
 ![QR Code](https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net)
 
+## Demo Walkthrough
+
+Use this flow to review the full demo in 5-7 minutes:
+
+1. **Open the production app**: Go to https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net and sign in with the demo account. The Facilities tab opens with a Mapbox map of 100 facility locations across the US.
+
+2. **Explore a facility and 3D floor plan**: Select `DC-001` or any facility card, then open the 3D floor plan. Click a non-operational equipment marker to inspect its status and run **AI Diagnosis** for likely causes, immediate actions, and estimated downtime.
+
+3. **Create a repair ticket from diagnosis**: From the AI Diagnosis panel, click **Create Repair Ticket**. The app closes the 3D view, switches to Tickets, and auto-fills the facility, category, and title so the request can be submitted quickly.
+
+4. **Track work orders**: In the Tickets tab, create, search, filter, start work, resolve, or delete tickets. Ticket records are persisted in Azure Database for PostgreSQL and immediately affect the 3D equipment state, dashboard counts, and inventory status.
+
+5. **Review maintenance operations**: Open Resources and scroll to Equipment Inventory and Maintenance Calendar. Inventory status is derived from active tickets and scheduled maintenance windows. Calendar events are clickable and can navigate directly to the facility, 3D view, or related ticket.
+
+6. **Review facility analytics**: Open Dashboard to see facility totals, square footage, employees, ticket status charts, facility type distribution, and state coverage.
+
+7. **Inspect the admin ticket table**: Open https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/admin/tickets and enter the demo passcode `faster99admin`. The protected table shows live PostgreSQL ticket records with search, status filtering, refresh, and CSV export.
+
+8. **Try data import/export**: Open Data to download the CSV template, review required facility columns, upload facility data, and export facility/contact records.
+
 ## Features
 
 ### 🤖 AI-Powered Features (OpenAI GPT-4o)
