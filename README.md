@@ -5,8 +5,11 @@ An AI-powered facility management tool built with Mapbox GL JS, Three.js, and Op
 ## Live Demo
 
 - **Production App**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net
+- **Admin Ticket Table**: https://faster99-cbegb8b2ajdgb6b6.canadacentral-01.azurewebsites.net/admin/tickets
 
-> Demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
+> App demo login: `demo@faster99.com` / `faster99demo` (or register with any email)
+>
+> Admin table demo passcode: `faster99admin`
 
 **Scan to open on mobile:**
 
