@@ -55,15 +55,9 @@ Use this flow to review the full demo in 5-7 minutes:
 | --- | --- |
 | ![Ticket workflow](docs/images/demo-tickets.png) | ![Recent tickets list](docs/images/demo-recent-tickets.png) |
 
-| Maintenance calendar |
-| --- |
-| ![Maintenance calendar event modal](docs/images/demo-maintenance-calendar.png) |
-
-### Data Operations
-
-| Data import |
-| --- |
-| ![Data import screen](docs/images/demo-data-import.png) |
+| Maintenance calendar | Data import |
+| --- | --- |
+| ![Maintenance calendar event modal](docs/images/demo-maintenance-calendar.png) | ![Data import screen](docs/images/demo-data-import.png) |
 
 ## Features
 
