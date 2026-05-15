@@ -35,6 +35,16 @@ Use this flow to review the full demo in 5-7 minutes:
 
 8. **Try data import/export**: Open Data to download the CSV template, review required facility columns, upload facility data, and export facility/contact records.
 
+## Demo Screenshots
+
+| Facility map | Optional sign in / guest browsing |
+| --- | --- |
+| ![Facility map overview](docs/images/demo-map-overview.png) | ![Sign in modal with guest option](docs/images/demo-sign-in-guest.png) |
+
+| Ticket workflow | Data import |
+| --- | --- |
+| ![Ticket workflow](docs/images/demo-tickets.png) | ![Data import screen](docs/images/demo-data-import.png) |
+
 ## Features
 
 ### 🤖 AI-Powered Features (OpenAI GPT-4o)

@@ -1615,6 +1615,28 @@ body {
     width: 100%;
     max-width: 380px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.login-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #555;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.login-close:hover {
+    background: #e5e7eb;
+    color: #111;
 }
 
 .login-header {
@@ -1683,6 +1705,25 @@ body {
 .login-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 20px rgba(212, 5, 17, 0.3);
+}
+
+.guest-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 12px;
+    background: #f3f4f6;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.guest-btn:hover {
+    background: #e9ecef;
+    border-color: #cfd4da;
 }
 
 .demo-hint {
@@ -1982,6 +2023,16 @@ body.dark-mode .tab-title { color: #e0e0e0; }
 body.dark-mode .tab-description { color: #999; }
 body.dark-mode .login-box { background: #1a1a2e; color: #e0e0e0; }
 body.dark-mode .login-box label { color: #ccc; }
+body.dark-mode .login-close,
+body.dark-mode .guest-btn {
+    background: #16213e;
+    border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .login-close:hover,
+body.dark-mode .guest-btn:hover {
+    background: #0f3460;
+}
 body.dark-mode .login-box input,
 body.dark-mode .login-box select {
     background: #16213e;

@@ -50,10 +50,11 @@
 </head>
 <body>
     <!-- Login Modal -->
-    <div id="login-modal" class="modal-overlay">
-        <div class="login-box">
+    <div id="login-modal" class="modal-overlay" onclick="handleLoginOverlayClick(event)">
+        <div class="login-box" role="dialog" aria-modal="true" aria-labelledby="login-title">
+            <button type="button" class="login-close" onclick="hideLoginModal()" aria-label="Close sign in dialog">×</button>
             <div class="login-header">
-                <h1>⚡ Faster <span>99</span></h1>
+                <h1 id="login-title">⚡ Faster <span>99</span></h1>
                 <p>Facility Management System</p>
             </div>
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -76,7 +77,8 @@
                 </div>
                 <button type="submit" class="login-btn">🔐 Sign In</button>
             </form>
-            <p class="demo-hint">Demo: Enter any email/password to login</p>
+            <button type="button" class="guest-btn" onclick="continueAsGuest()">Continue as Guest</button>
+            <p class="demo-hint">Demo: Enter any email/password to login, or continue as guest to browse.</p>
         </div>
     </div>
 
@@ -557,6 +559,19 @@
         function hideLoginModal() {
             document.getElementById('login-modal').classList.remove('active');
         }
+
+        function handleLoginOverlayClick(event) {
+            if (event.target.id === 'login-modal') {
+                hideLoginModal();
+            }
+        }
+
+        function continueAsGuest() {
+            hideLoginModal();
+            currentUser = null;
+            localStorage.removeItem('fm_user');
+            updateUserUI();
+        }
         
         function updateUserUI() {
             const userInfo = document.getElementById('user-info');
@@ -623,6 +638,12 @@
             checkAuth();
             initTheme();
             updateNotifButton();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                hideLoginModal();
+            }
         });
 
         // API Configuration - fallback to local data if API unavailable
