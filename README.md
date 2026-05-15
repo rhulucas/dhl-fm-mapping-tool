@@ -37,16 +37,32 @@ Use this flow to review the full demo in 5-7 minutes:
 
 ## Demo Screenshots
 
-| Facility map | Dashboard analytics |
+### Map and Facility Overview
+
+| National facility map | Dashboard analytics |
 | --- | --- |
 | ![Facility map overview](docs/images/demo-map-overview.png) | ![Facilities dashboard](docs/images/demo-dashboard.png) |
 
-| Maintenance calendar | Ticket workflow |
+### 3D Floor Plan and AI Diagnosis
+
+| AI equipment diagnosis | Ticket-linked equipment status |
 | --- | --- |
-| ![Maintenance calendar event modal](docs/images/demo-maintenance-calendar.png) | ![Ticket workflow](docs/images/demo-tickets.png) |
+| ![3D floor plan AI diagnosis](docs/images/demo-3d-ai-diagnosis.png) | ![3D floor plan linked ticket](docs/images/demo-3d-linked-ticket.png) |
+
+### Work Order and Maintenance Flow
+
+| Ticket creation and AI suggestions | Recent tickets and map context |
+| --- | --- |
+| ![Ticket workflow](docs/images/demo-tickets.png) | ![Recent tickets list](docs/images/demo-recent-tickets.png) |
+
+| Maintenance calendar |
+| --- |
+| ![Maintenance calendar event modal](docs/images/demo-maintenance-calendar.png) |
+
+### Data Operations
 
 | Data import |
-| --- | --- |
+| --- |
 | ![Data import screen](docs/images/demo-data-import.png) |
 
 ## Features
