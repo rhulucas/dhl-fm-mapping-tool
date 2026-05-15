@@ -37,13 +37,17 @@ Use this flow to review the full demo in 5-7 minutes:
 
 ## Demo Screenshots
 
-| Facility map | Optional sign in / guest browsing |
+| Facility map | Dashboard analytics |
 | --- | --- |
-| ![Facility map overview](docs/images/demo-map-overview.png) | ![Sign in modal with guest option](docs/images/demo-sign-in-guest.png) |
+| ![Facility map overview](docs/images/demo-map-overview.png) | ![Facilities dashboard](docs/images/demo-dashboard.png) |
 
-| Ticket workflow | Data import |
+| Maintenance calendar | Ticket workflow |
 | --- | --- |
-| ![Ticket workflow](docs/images/demo-tickets.png) | ![Data import screen](docs/images/demo-data-import.png) |
+| ![Maintenance calendar event modal](docs/images/demo-maintenance-calendar.png) | ![Ticket workflow](docs/images/demo-tickets.png) |
+
+| Data import |
+| --- | --- |
+| ![Data import screen](docs/images/demo-data-import.png) |
 
 ## Features
 
